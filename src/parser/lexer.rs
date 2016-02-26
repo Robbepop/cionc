@@ -1,11 +1,11 @@
 use std::str::Chars;
 
-use ::util::is_any_of::*;
+use util::is_any_of::*;
 
-use super::token::*;
-use super::token_stream::TokenStream;
-use super::util::char_util::CharProperties;
-use super::compile_context::CompileContext;
+use parser::token::*;
+use parser::token_stream::TokenStream;
+use parser::util::char_util::CharProperties;
+use parser::compile_context::CompileContext;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 // I am fully aware of super-neat tools that can generate lexers and parser automatically,
