@@ -44,7 +44,7 @@ impl CharProperties for char {
 
 	fn is_hexdec_numeral(&self) -> bool {
 		self.is_decimal_numeral() ||
-		// self.in_range_of('a','z') ||
+		self.in_range_of('a','z') ||
 		self.in_range_of('A','Z')
 	}
 
@@ -55,5 +55,36 @@ impl CharProperties for char {
 
 	fn is_alpha_numeral(&self) -> bool {
 		self.is_alpha() || self.is_decimal_numeral()
+	}
+}
+
+mod tests {
+	use super::CharProperties;
+
+	#[test]
+	fn test_whitespace() {
+		assert!(' '.is_whitespace());
+		assert!('\n'.is_whitespace());
+		assert!('\r'.is_whitespace());
+		assert!('\t'.is_whitespace());
+	}
+
+	#[test]
+	fn test_numeric() {
+		let characters = &[
+			'0','1','2','3','4','5','6','7','8','9',
+			'a','b','c','d','e','f',
+			'A','B','C','D','E','F'];
+		for c in characters {
+			println!("{}, ", c);
+			println!("	binary");
+			assert_eq!(c.is_digit(2), c.is_binary_numeral());
+			println!("	octal");
+			assert_eq!(c.is_digit(8), c.is_octal_numeral());
+			println!("	decimal");
+			assert_eq!(c.is_digit(10), c.is_decimal_numeral());
+			println!("	hexdec");
+			assert_eq!(c.is_digit(16), c.is_hexdec_numeral());
+		}
 	}
 }
