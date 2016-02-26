@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::ops::DerefMut;
-use super::string_table::StringTable;
+use parser::string_table::StringTable;
 
 // This type is the root to manage several subcomponents.
 // In later revisions it has a StringTable, a SymbolTable, an ErrorHandler and more

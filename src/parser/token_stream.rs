@@ -1,4 +1,4 @@
-pub use super::token::Token;
+pub use parser::token::Token;
 
 // Types like the Lexer implement this trait as they are iterators
 // over Tokens. Maybe it should be substituted simply with the Iterator<Token> trait.
