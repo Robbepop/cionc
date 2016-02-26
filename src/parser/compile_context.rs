@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::ops::DerefMut;
 use super::string_table::StringTable;
 
 // This type is the root to manage several subcomponents.

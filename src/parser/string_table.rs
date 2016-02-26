@@ -1,5 +1,4 @@
 use std::vec::Vec;
-use std::ops::Deref;
 
 /// This class represents a collection of cached strings.
 /// It works just like a Set of Strings,
