@@ -15,19 +15,19 @@ use parser::compile_context::CompileContext;
 // Keep in mind that this implementation isn't final as many things like scan_string_literal(...)
 // are still missing or are not completely implemented, yet (like scan_char_literal(...)).
 
-pub struct Lexer<'b, 'ctx: 'b> {
+pub struct Lexer<'input, 'ctx> {
 	context: &'ctx CompileContext,
-	input: Chars<'b>,
+	input: Chars<'input>,
 	buffer: String,
 	cur_char: char
 }
 
-impl<'b, 'ctx> Lexer<'b, 'ctx> {
+impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	pub fn new(
 		ctx: &'ctx CompileContext,
-		iterator: Chars<'b>
+		iterator: Chars<'input>
 	)
-		-> Lexer<'b, 'ctx>
+		-> Lexer<'input, 'ctx>
 	{
 		let mut lexer = Lexer {
 			context: ctx,
@@ -38,11 +38,11 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		lexer
 	}
 
-	pub fn new_from_str<'c: 'b>(
+	pub fn new_from_str<'content: 'input>(
 		ctx: &'ctx CompileContext,
-		content : &'c str
+		content : &'content str
 	)
-		-> Lexer<'b, 'ctx>
+		-> Lexer<'input, 'ctx>
 	{
 		Lexer::new(ctx, content.chars())
 	}
@@ -70,7 +70,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 	/// for method chaining in order to improve the code-flow
 	/// May be more important in future versions for managing
 	/// of source locations.
-	fn make<'a>(&self, token: Token<'a>) -> Token<'a> {
+	fn make(&self, token: Token<'ctx>) -> Token<'ctx> {
 		token
 	}
 
@@ -81,14 +81,14 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		self
 	}
 
-	fn scan_line_comment<'a>(&mut self) -> Token<'a> {
+	fn scan_line_comment(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), '/');
 		self.skip_while(|c| c.is_none_of(&['\n','\0']));
 		self.consume();
 		self.make(Token::Comment)
 	}
 
-	fn scan_multi_line_comment<'a>(&mut self) -> Token<'a> {
+	fn scan_multi_line_comment(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), '*');
 		self.consume();
 		loop {
@@ -104,7 +104,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		}
 	}
 
-	fn scan_identifier<'a: 'b>(&mut self) -> Token<'a> {
+	fn scan_identifier(&mut self) -> Token<'ctx> {
 		assert!(self.get().is_alpha());
 		self.store_while(|c| c.is_alpha_numeral() || c == '_');
 		// self.make(Token::Identifier(""))
@@ -113,7 +113,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 			self.context.get_string_table().get_or_insert(&self.buffer)))
 	}
 
-	fn scan_char_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_char_literal(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), '\'');
 		match self.consume().get() {
 			/* error: empty character literal */
@@ -183,16 +183,16 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		}
 	}
 
-	fn scan_string_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_string_literal(&mut self) -> Token<'ctx> {
 		self.make(Token::Error)
 	}
 
-	fn scan_integral_literal_suffix<'a>(&mut self) -> Token<'a> {
+	fn scan_integral_literal_suffix(&mut self) -> Token<'ctx> {
 		self.store_while(|c| c.is_alpha_numeral());
 		self.make(Token::Literal(LiteralToken::Integer("")))
 	}
 
-	fn scan_binary_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_binary_literal(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), 'b');
 		self.store().consume();
 		self.store_while(|c| c.is_binary_numeral() || c == '_');
@@ -200,7 +200,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		self.make(Token::Literal(LiteralToken::Integer("")))
 	}
 
-	fn scan_octal_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_octal_literal(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), 'o');
 		self.store().consume();
 		self.store_while(|c| c.is_octal_numeral() || c == '_');
@@ -208,7 +208,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		self.make(Token::Literal(LiteralToken::Integer("")))
 	}
 
-	fn scan_hexdec_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_hexdec_literal(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), 'x');
 		self.store().consume();
 		self.store_while(|c| c.is_hexdec_numeral() || c == '_');
@@ -216,7 +216,7 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		self.make(Token::Literal(LiteralToken::Integer("")))
 	}
 
-	fn scan_decimal_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_decimal_literal(&mut self) -> Token<'ctx> {
 		assert!(self.get().is_decimal_numeral() || self.get() == '_');
 		self.store_while(|c| c.is_decimal_numeral() || c == '_');
 		match self.get() {
@@ -225,12 +225,12 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 		}
 	}
 
-	fn scan_float_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_float_literal(&mut self) -> Token<'ctx> {
 		assert_eq!(self.get(), '.');
 		Token::EndOfFile
 	}
 
-	fn scan_number_literal<'a>(&mut self) -> Token<'a> {
+	fn scan_number_literal(&mut self) -> Token<'ctx> {
 		assert!(self.get().is_decimal_numeral());
 		match self.get() {
 			'0' => match self.store().consume().get() {
@@ -279,8 +279,8 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 	}
 }
 
-impl<'b, 'ctx, 'ts> TokenStream<'ts> for Lexer<'b, 'ctx> {
-	fn next_token(&mut self) -> Token<'ts> {
+impl<'input, 'ctx> TokenStream<'ctx> for Lexer<'input, 'ctx> {
+	fn next_token(&mut self) -> Token<'ctx> {
 		self.clear_buffer();
 		match self.get() {
 			/* Skip whitespace */
@@ -417,8 +417,8 @@ impl<'b, 'ctx, 'ts> TokenStream<'ts> for Lexer<'b, 'ctx> {
 	}
 }
 
-impl<'b, 'ctx> Iterator for Lexer<'b, 'ctx> {
-	type Item = Token<'b>;
+impl<'input, 'ctx> Iterator for Lexer<'input, 'ctx> {
+	type Item = Token<'ctx>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let token = self.next_token();

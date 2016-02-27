@@ -20,9 +20,7 @@ pub struct CompileContext {
 }
 
 impl CompileContext {
-	pub fn get_string_table(&mut self) -> RefMut<StringTable> {
+	pub fn get_string_table<'ctx>(&'ctx self) -> RefMut<'ctx, StringTable> {
 		self.string_table.borrow_mut()
 	}
-// src/parser/lexer.rs:113:17: 113:35 error: cannot infer an appropriate lifetime for autoref due to conflicting requirements [E0495]
-// src/parser/lexer.rs:113 			self.context.get_string_table().get_or_insert(&self.buffer)))
 }
