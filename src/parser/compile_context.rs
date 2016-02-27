@@ -23,16 +23,6 @@ impl CompileContext {
 	pub fn get_string_table(&mut self) -> RefMut<StringTable> {
 		self.string_table.borrow_mut()
 	}
-	// This method doesn't work, the compiler complains about the following:
-	// src/parser/compile_context.rs:24:3: 24:33 error: borrowed value does not live long enough
-	// src/parser/compile_context.rs:24 		self.string_table.borrow_mut().deref_mut()
-	// src/parser/compile_context.rs:23:57: 25:3 note: reference must be valid for the anonymous lifetime #1 defined on the block at 23:56...
-	// src/parser/compile_context.rs:23:57: 25:3 note: ...but borrowed value is only valid for the block at 23:56
-	//
-	// I think a big problem I still have is that I haven't yet learned how to precisely
-	// express my intents to the lifetime-checker.
-	//
-	// pub fn get_string_table(&mut self) -> &mut StringTable {
-	// 	self.string_table.borrow_mut().deref_mut()
-	// }
+// src/parser/lexer.rs:113:17: 113:35 error: cannot infer an appropriate lifetime for autoref due to conflicting requirements [E0495]
+// src/parser/lexer.rs:113 			self.context.get_string_table().get_or_insert(&self.buffer)))
 }
