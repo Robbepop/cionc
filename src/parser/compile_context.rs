@@ -20,7 +20,7 @@ pub struct CompileContext {
 }
 
 impl CompileContext {
-	pub fn get_string_table<'ctx>(&'ctx mut self) -> RefMut<'ctx, StringTable> {
+	pub fn get_string_table(&mut self) -> RefMut<StringTable> {
 		self.string_table.borrow_mut()
 	}
 	// This method doesn't work, the compiler complains about the following:

@@ -11,7 +11,7 @@ pub struct StringTable {
 }
 
 impl StringTable {
-	pub fn get_or_insert(&mut self, key: &String) -> &str {
+	pub fn get_or_insert<'a>(&'a mut self, key: &String) -> &'a str {
 		self.entries.entry(key.clone()).or_insert(key.clone())
 	}
 }
