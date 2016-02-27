@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::ops::DerefMut;
+use std::cell::RefMut;
 use parser::string_table::StringTable;
 
 // This type is the root to manage several subcomponents.
@@ -20,6 +20,9 @@ pub struct CompileContext {
 }
 
 impl CompileContext {
+	pub fn get_string_table<'ctx>(&'ctx mut self) -> RefMut<'ctx, StringTable> {
+		self.string_table.borrow_mut()
+	}
 	// This method doesn't work, the compiler complains about the following:
 	// src/parser/compile_context.rs:24:3: 24:33 error: borrowed value does not live long enough
 	// src/parser/compile_context.rs:24 		self.string_table.borrow_mut().deref_mut()

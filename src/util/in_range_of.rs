@@ -1,5 +1,3 @@
-use std::cmp::PartialEq;
-
 pub trait InRangeOf<T : PartialEq> {
 	fn in_range_of(&self, lower_bound: T, upper_bound: T) -> bool;
 } 

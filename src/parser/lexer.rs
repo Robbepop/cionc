@@ -15,7 +15,7 @@ use parser::compile_context::CompileContext;
 // Keep in mind that this implementation isn't final as many things like scan_string_literal(...)
 // are still missing or are not completely implemented, yet (like scan_char_literal(...)).
 
-pub struct Lexer<'b, 'ctx> {
+pub struct Lexer<'b, 'ctx: 'b> {
 	context: &'ctx CompileContext,
 	input: Chars<'b>,
 	buffer: String,
@@ -107,9 +107,10 @@ impl<'b, 'ctx> Lexer<'b, 'ctx> {
 	fn scan_identifier<'a: 'b>(&mut self) -> Token<'a> {
 		assert!(self.get().is_alpha());
 		self.store_while(|c| c.is_alpha_numeral() || c == '_');
-		// let s = self.context.get_string_table().get_or_insert(self.buffer.clone());
-		// self.make(Token::Identifier(s))
-		self.make(Token::Identifier(""))
+		// self.make(Token::Identifier(""))
+		// self.make_special(SpecialToken::Identifier) // planned future API
+		self.make(Token::Identifier(
+			self.context.get_string_table().get_or_insert(&self.buffer)))
 	}
 
 	fn scan_char_literal<'a>(&mut self) -> Token<'a> {
