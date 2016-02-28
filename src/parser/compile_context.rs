@@ -8,11 +8,8 @@ use parser::string_table::StringTable;
 // can use.
 // It has methods to get references to its members so types like Lexer and Parser just
 // have to have one member of this type in order to access all of its utility members.
-//
-// However, as it seems to me at the moment this design doesn't suite the borrow-checker
-// and especially the lifetime-checker of Rust and may be a bad design in general.
-// I am very happy about suggestions to improve this situation as I am unwilling to just use
-// unsafe blocks where they aren't needed for sure.
+
+use std::ops::DerefMut;
 
 #[derive(Default)]
 pub struct CompileContext {

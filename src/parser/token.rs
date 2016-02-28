@@ -5,6 +5,8 @@
 // The tokens and their layout used in this simple implementation
 // are based on the Rustc token types.
 
+use std::rc::Rc;
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
     Plus,    // +
@@ -42,17 +44,17 @@ pub enum DelimitToken {
     Brace,   // { or }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum LiteralToken<'a> {
-    Bool(&'a str),    // e.g. true or false
-    Char(&'a str),    // e.g. 'a'
-    Integer(&'a str), // e.g. 5, 42, 1337, 0
-    Float(&'a str),   // e.g. 0.1, 5.0, 13.37, 0.0
-    String(&'a str)   // e.g. "Hello, World!"
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum LiteralToken {
+    Bool(Rc<String>),    // e.g. true or false
+    Char(Rc<String>),    // e.g. 'a'
+    Integer(Rc<String>), // e.g. 5, 42, 1337, 0
+    Float(Rc<String>),   // e.g. 0.1, 5.0, 13.37, 0.0
+    String(Rc<String>)   // e.g. "Hello, World!"
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum Token<'a> {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Token {
     /* Logical operators, e.g. && or || */
     LogicalOp(LogicalOpToken),
     /* Binary operators compatible with assignment, e.g. +, - */
@@ -69,9 +71,9 @@ pub enum Token<'a> {
     CloseDelim(DelimitToken),
 
     /* Identifiers with their given name */
-    Identifier(&'a str),
+    Identifier(Rc<String>),
     /* Literal token, e.g. an integer, float or string literal */
-    Literal(LiteralToken<'a>),
+    Literal(LiteralToken),
 
     /* Special tokens */
     Eq,          // =
@@ -97,4 +99,41 @@ pub enum Token<'a> {
 
     /* Token indicating that an errornous sequence has been found */
     Error
+}
+
+impl Token {
+    pub fn bool_literal_from_str(slice: &str) -> Token {
+        Token::Literal(
+            LiteralToken::Bool(
+                Rc::new(String::from(slice))))
+    }
+
+    pub fn char_literal_from_str(slice: &str) -> Token {
+        Token::Literal(
+            LiteralToken::Char(
+                Rc::new(String::from(slice))))
+    }
+
+    pub fn integer_literal_from_str(slice: &str) -> Token {
+        Token::Literal(
+            LiteralToken::Integer(
+                Rc::new(String::from(slice))))
+    }
+
+    pub fn float_literal_from_str(slice: &str) -> Token {
+        Token::Literal(
+            LiteralToken::Float(
+                Rc::new(String::from(slice))))
+    }
+
+    pub fn string_literal_from_str(slice: &str) -> Token {
+        Token::Literal(
+            LiteralToken::String(
+                Rc::new(String::from(slice))))
+    }
+
+    pub fn identifier_from_str(slice: &str) -> Token {
+        Token::Identifier(
+            Rc::new(String::from(slice)))
+    }
 }
