@@ -12,9 +12,6 @@ fn parse_arguments() -> Result<i32, String> {
     }
 }
 
-use std::mem;
-use std::rc::Rc;
-
 fn main() {
     let arg = match parse_arguments() {
         Ok(arg) => arg,

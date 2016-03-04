@@ -9,8 +9,6 @@ use parser::string_table::StringTable;
 // It has methods to get references to its members so types like Lexer and Parser just
 // have to have one member of this type in order to access all of its utility members.
 
-use std::ops::DerefMut;
-
 #[derive(Default)]
 pub struct CompileContext {
 	string_table: RefCell<StringTable>

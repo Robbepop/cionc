@@ -2,12 +2,10 @@ use std::str::Chars;
 use std::rc::Rc;
 
 use util::is_any_of::*;
-
+use parser::util::char_util::CharProperties;
 use parser::token::*;
 use parser::token_stream::TokenStream;
-use parser::util::char_util::CharProperties;
 use parser::compile_context::CompileContext;
-use parser::string_table::StringTable;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 // I am fully aware of super-neat tools that can generate lexers and parser automatically,
@@ -127,10 +125,11 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_char_literal(&mut self) -> Token {
+		use parser::token::Token::*;
 		assert_eq!(self.get(), '\'');
 		match self.consume().get() {
 			/* error: empty character literal */
-			'\'' => self.make(Token::Error),
+			'\'' => self.make(Error),
 
 			/* escape characters */
 			'\\' => match self.store().consume().get() {
@@ -143,20 +142,20 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 					'\'' => {
 						self.consume();
 						let drained = self.drain_buffer();
-						self.make(Token::Literal(LiteralToken::Char(drained)))
+						self.make(Literal(LiteralToken::Char(drained)))
 					},
-					_ => self.make(Token::Error)
+					_ => self.make(Error)
 				},
 
 				/* hex-code unicode followed by two hex-digits */
 				'x' => match self.store().consume().get() {
 					/* error: no hex-digits provided */
-					'\'' => self.make(Token::Error),
+					'\'' => self.make(Error),
 
 					/* valid unicode starting code-point */
 					'0' ... '7' => match self.store().consume().get() {
 						/* error: just one unicode code-point given */
-						'\'' => self.make(Token::Error),
+						'\'' => self.make(Error),
 
 						/* valid unicode 2nd code-point given */
 						'0' ... '9' |
@@ -165,43 +164,43 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 							/* valid closed unicode char literal */
 							'\'' => {
 								let drained = self.drain_buffer();
-								self.make(Token::Literal(
+								self.make(Literal(
 									LiteralToken::Char(drained)))
 							},
 							/* error: has to close after two hex-digits */
-							_ => self.make(Token::Error)
+							_ => self.make(Error)
 						},
 
 						/* error: invalid 2nd code-point */
-						_ => self.make(Token::Error)
+						_ => self.make(Error)
 					},
 
 					/* invalid starting points for unicode */
 					'8' ... '9' |
 					'a' ... 'f' |
-					'A' ... 'F' => self.make(Token::Error),
+					'A' ... 'F' => self.make(Error),
 
 					/* anything else invalid */
-					_ => self.make(Token::Error)
+					_ => self.make(Error)
 				},
 
 				/* uni-code up to 6 hex-digits (TODO) */
 				'u' => match self.store().consume().get() {
-					_ => self.make(Token::Error)
+					_ => self.make(Error)
 				},
 
 				/* no valid escape character read */
-				_ => self.make(Token::Error)
+				_ => self.make(Error)
 			},
 
 			/* normal ascii charater literal */
 			_ => match self.store().consume().get() {
 				'\'' => {
 					let drained = self.drain_buffer();
-					self.consume().make(Token::Literal(
+					self.consume().make(Literal(
 						LiteralToken::Char(drained)))
 				},
-				_ => self.make(Token::Error) // more than one code-point in character literal
+				_ => self.make(Error) // more than one code-point in character literal
 			}
 		}
 	}
@@ -316,124 +315,129 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 	fn next_token(&mut self) -> Token {
+		use parser::token::Token::*;
+		use parser::token::DelimitToken::*;
+		use parser::token::BinOpToken::*;
+		use parser::token::LogicalOpToken::*;
+		use parser::token::RelOpToken::*;
 		self.clear_buffer();
 		match self.get() {
 			/* Skip whitespace */
 			c if c.is_whitespace() => {
 				self.skip_while(|c| c.is_whitespace());
-				self.make(Token::Whitespace)
+				self.make(Whitespace)
 			},
 
 			/* Opening delimiters */
-			'(' => self.consume().make(Token::OpenDelim(DelimitToken::Paren)),
-			'[' => self.consume().make(Token::OpenDelim(DelimitToken::Bracket)),
-			'{' => self.consume().make(Token::OpenDelim(DelimitToken::Brace)),
+			'(' => self.consume().make(OpenDelim(Paren)),
+			'[' => self.consume().make(OpenDelim(Bracket)),
+			'{' => self.consume().make(OpenDelim(Brace)),
 
 			/* Opening delimiters */
-			')' => self.consume().make(Token::CloseDelim(DelimitToken::Paren)),
-			']' => self.consume().make(Token::CloseDelim(DelimitToken::Bracket)),
-			'}' => self.consume().make(Token::CloseDelim(DelimitToken::Brace)),
+			')' => self.consume().make(CloseDelim(Paren)),
+			']' => self.consume().make(CloseDelim(Bracket)),
+			'}' => self.consume().make(CloseDelim(Brace)),
 
 			/* Special tokens which aren't the beginning
 			   of any other token */
-			'?' => self.consume().make(Token::Question),
-			';' => self.consume().make(Token::SemiColon),
-			',' => self.consume().make(Token::Comma),
-			'_' => self.consume().make(Token::Underscore),
+			'?' => self.consume().make(Question),
+			';' => self.consume().make(SemiColon),
+			',' => self.consume().make(Comma),
+			'_' => self.consume().make(Underscore),
 
 			/* Dot, DotDot and DotDotDot tokens */
 			'.' => match self.consume().get() {
 				'.' => match self.consume().get() {
-					'.' => self.consume().make(Token::DotDotDot),
-					_   => self.make(Token::DotDot)
+					'.' => self.consume().make(DotDotDot),
+					_   => self.make(DotDot)
 				},
-				_ => self.make(Token::Dot)
+				_ => self.make(Dot)
 			},
 
 			/* Tokens starting with '+' */
 			'+' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Plus)),
-				_   => self.make(Token::BinOp(BinOpToken::Plus))
+				'=' => self.consume().make(BinOpEq(Plus)),
+				_   => self.make(BinOp(Plus))
 			},
 
 			/* Tokens starting with '-' */
 			'-' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Minus)),
-				'>' => self.consume().make(Token::Arrow),
-				_   => self.make(Token::BinOp(BinOpToken::Minus))
+				'=' => self.consume().make(BinOpEq(Minus)),
+				'>' => self.consume().make(Arrow),
+				_   => self.make(BinOp(Minus))
 			},
 
 			/* Tokens starting with '*' */
 			'*' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Star)),
-				_   => self.make(Token::BinOp(BinOpToken::Star))
+				'=' => self.consume().make(BinOpEq(Star)),
+				_   => self.make(BinOp(Star))
 			},
 
 			/* Tokens starting with '/' */
 			'/' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Slash)),
+				'=' => self.consume().make(BinOpEq(Slash)),
 				'/' => self.scan_line_comment(),
 				'*' => self.scan_multi_line_comment(),
-				_ => self.make(Token::BinOp(BinOpToken::Slash))
+				_ => self.make(BinOp(Slash))
 			},
 
 			/* Tokens starting with '%' */
 			'%' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Percent)),
-				_   => self.make(Token::BinOp(BinOpToken::Percent))
+				'=' => self.consume().make(BinOpEq(Percent)),
+				_   => self.make(BinOp(Percent))
 			},
 
 			/* Tokens starting with '^' */
 			'^' => match self.consume().get() {
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Caret)),
-				_   => self.make(Token::BinOp(BinOpToken::Caret))
+				'=' => self.consume().make(BinOpEq(Caret)),
+				_   => self.make(BinOp(Caret))
 			},
 
 			/* Tokens starting with '!' */
 			'!' => match self.consume().get() {
-				'=' => self.consume().make(Token::RelOp(RelOpToken::NotEq)),
-				_   => self.make(Token::Exclamation)
+				'=' => self.consume().make(RelOp(NotEq)),
+				_   => self.make(Exclamation)
 			},
 
 			/* Tokens starting with '=' */
 			'=' => match self.consume().get() {
-				'>' => self.consume().make(Token::FatArrow),
-				'=' => self.consume().make(Token::RelOp(RelOpToken::EqEq)),
-				_   => self.make(Token::Eq)
+				'>' => self.consume().make(FatArrow),
+				'=' => self.consume().make(RelOp(EqEq)),
+				_   => self.make(Eq)
 			},
 
 			/* Tokens starting with '&' */
 			'&' => match self.consume().get() {
-				'&' => self.consume().make(Token::LogicalOp(LogicalOpToken::AndAnd)),
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::And)),
-				_   => self.make(Token::BinOp(BinOpToken::And))
+				'&' => self.consume().make(LogicalOp(AndAnd)),
+				'=' => self.consume().make(BinOpEq(And)),
+				_   => self.make(BinOp(And))
 			},
 
 			/* Tokens starting with '|' */
 			'|' => match self.consume().get() {
-				'|' => self.consume().make(Token::LogicalOp(LogicalOpToken::OrOr)),
-				'=' => self.consume().make(Token::BinOpEq(BinOpToken::Or)),
-				_   => self.make(Token::BinOp(BinOpToken::Or))
+				'|' => self.consume().make(LogicalOp(OrOr)),
+				'=' => self.consume().make(BinOpEq(Or)),
+				_   => self.make(BinOp(Or))
 			},
 
 			/* Tokens starting with '<' */
 			'<' => match self.consume().get() {
 				'<' => match self.consume().get() {
-					'=' => self.consume().make(Token::BinOpEq(BinOpToken::Shl)),
-					_   => self.make(Token::BinOp(BinOpToken::Shl))
+					'=' => self.consume().make(BinOpEq(Shl)),
+					_   => self.make(BinOp(Shl))
 				},
-				'=' => self.consume().make(Token::RelOp(RelOpToken::LessEq)),
-				_   => self.make(Token::RelOp(RelOpToken::LessThan))
+				'=' => self.consume().make(RelOp(LessEq)),
+				_   => self.make(RelOp(LessThan))
 			},
 
 			/* Tokens starting with '>' */
 			'>' => match self.consume().get() {
 				'>' => match self.consume().get() {
-					'=' => self.consume().make(Token::BinOpEq(BinOpToken::Shr)),
-					_   => self.make(Token::BinOp(BinOpToken::Shr))
+					'=' => self.consume().make(BinOpEq(Shr)),
+					_   => self.make(BinOp(Shr))
 				},
-				'=' => self.consume().make(Token::RelOp(RelOpToken::GreaterEq)),
-				_   => self.make(Token::RelOp(RelOpToken::GreaterThan))
+				'=' => self.consume().make(RelOp(GreaterEq)),
+				_   => self.make(RelOp(GreaterThan))
 			},
 
 			/* Char and string literals */
@@ -447,7 +451,7 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 			c if c.is_alpha() => self.scan_identifier(),
 
 			/* When end of iterator has been reached */
-			_ => self.make(Token::EndOfFile)
+			_ => self.make(EndOfFile)
 		}
 	}
 }
@@ -466,29 +470,22 @@ impl<'input, 'ctx> Iterator for Lexer<'input, 'ctx> {
 
 #[cfg(test)]
 mod tests {
-	use std::rc::Rc;
-
-	use super::*;
-	use super::super::token::*;
-	use super::super::compile_context::CompileContext;
+	use parser::lexer::*;
+	use parser::token::*;
+	use parser::compile_context::CompileContext;
 
 	#[test]
 	fn simple_tokens() {
+		use parser::token::Token::*;
+		use parser::token::DelimitToken::*;
 		let solution = vec![
-			Token::OpenDelim(DelimitToken::Paren),
-			Token::CloseDelim(DelimitToken::Paren),
-			
-			Token::OpenDelim(DelimitToken::Bracket),
-			Token::CloseDelim(DelimitToken::Bracket),
-			
-			Token::OpenDelim(DelimitToken::Brace),
-			Token::CloseDelim(DelimitToken::Brace),
+			OpenDelim(Paren), CloseDelim(Paren),
+			OpenDelim(Bracket), CloseDelim(Bracket),
+			OpenDelim(Brace), CloseDelim(Brace),
 
-			Token::Question,
-			Token::SemiColon,
-			Token::Comma,
-
-			Token::EndOfFile
+			Question,
+			SemiColon,
+			Comma
 		];
 		let ctx   = CompileContext::default();
 		let lexer = Lexer::new_from_str(&ctx, "()[]{}?;,");

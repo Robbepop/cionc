@@ -13,7 +13,8 @@ pub struct StringTable {
 }
 
 impl StringTable {
-	pub fn get_or_insert<'table>(&'table mut self, key: &String) -> Rc<String> {
-		self.entries.entry(key.clone()).or_insert_with(|| Rc::new(key.clone())).clone()
+	pub fn get_or_insert(&mut self, key: &String) -> Rc<String> {
+		self.entries.entry(key.clone()).or_insert_with(
+			|| Rc::new(key.clone())).clone()
 	}
 }
