@@ -209,41 +209,112 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		self.make(Token::Error)
 	}
 
-	fn scan_integral_literal_suffix(&mut self) -> Token {
-		self.store_while(|c| c.is_alpha_numeral());
+	fn is_followed_by_min<C, U>(&mut self, n: usize, pred_counted: C, pred_uncounted: U) -> bool
+		where C: Fn(char) -> bool,
+		      U: Fn(char) -> bool
+	{
+		let mut count_valid = 0usize;
+		loop {
+			if pred_counted(self.get()) {
+				count_valid += 1;
+				self.store().consume();
+			}
+			else if pred_uncounted(self.get()) {
+				self.store().consume();
+			}
+			else {
+				break;
+			}
+		}
+		count_valid >= n
+	}
+
+	// fn scan_signed_integer_suffix(&mut self) -> Token {
+	// 	assert_eq!(self.get(), 'i');
+	// 	match self.consume().peek_four() {
+	// 		('8',  _ ,  _ ,  _ ) => self.consume_n(1).make(Literal(Integer(I8))),
+	// 		('1', '6',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I16))),
+	// 		('3', '2',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I32))),
+	// 		('6', '4',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I64))),
+	// 		('s', 'i', 'z', 'e') => self.consume_n(4).make(Literal(Integer(ISize))),
+	// 		_ => Token::Error
+	// 	}
+	// }
+
+	// fn scan_unsigned_integer_suffix(&mut self) -> Token {
+	// 	assert_eq!(self.get(), 'u');
+	// 	match self.consume().peek_four() {
+	// 		('8',  _ ,  _ ,  _ ) => self.consume_n(1).make(Literal(Integer(U8))),
+	// 		('1', '6',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U16))),
+	// 		('3', '2',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U32))),
+	// 		('6', '4',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U64))),
+	// 		('s', 'i', 'z', 'e') => self.consume_n(4).make(Literal(Integer(USize))),
+	// 		_ => Token::Error
+	// 	}
+	// }
+
+	// fn scan_float_suffix(&mut self) -> Token {
+	// 	assert_eq!(self.get(), 'f');
+	// 	match self.consume().peek_two() {
+	// 		('3', '2') => self.consume_n(2).make(Literal(Float(F32))),
+	// 		('6', '4') => self.consume_n(2).make(Literal(Float(F64))),
+	// 		_ => Token::Error
+	// 	}
+	// }
+
+	fn scan_integer_suffix(&mut self) -> Token {
+		// if self.get() == '\'' {
+		// 	match self.consume().get() {
+		// 		'i' => self.scan_signed_integer_suffix(),
+		// 		'u' => self.scan_unsigned_integer_suffix(),
+		// 		'f' => self.scan_float_suffix(),
+		// 		 _  => {
+		// 			let drained = self.drain_buffer();
+		// 			self.make(Token::Literal(LiteralToken::Integer(drained)))
+		// 		 }
+		// 	}
+		// } else {
+		// 	let drained = self.drain_buffer();
+		// 	self.make(Token::Literal(LiteralToken::Integer(drained)))
+		// }
 		let drained = self.drain_buffer();
-		self.make(Token::Literal(
-			LiteralToken::Integer(drained)))
+		self.make(Token::Literal(LiteralToken::Integer(drained)))
 	}
 
 	fn scan_binary_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'b');
 		self.store().consume();
-		self.store_while(|c| c.is_binary_numeral() || c == '_');
-		// self.scan_integral_literal_suffix()
-		let drained = self.drain_buffer();
-		self.make(Token::Literal(
-			LiteralToken::Integer(drained)))
+		if self.is_followed_by_min(1, |c| c.is_binary_numeral(), |c| c == '_') {
+			self.store_while(|c| c.is_binary_numeral() || c == '_');
+			self.scan_integer_suffix()
+		}
+		else {
+			self.make(Token::Error)
+		}
 	}
 
 	fn scan_octal_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'o');
 		self.store().consume();
-		self.store_while(|c| c.is_octal_numeral() || c == '_');
-		// self.scan_integral_literal_suffix()
-		let drained = self.drain_buffer();
-		self.make(Token::Literal(
-			LiteralToken::Integer(drained)))
+		if self.is_followed_by_min(1, |c| c.is_octal_numeral(), |c| c == '_') {
+			self.store_while(|c| c.is_octal_numeral() || c == '_');
+			self.scan_integer_suffix()
+		}
+		else {
+			self.make(Token::Error)
+		}
 	}
 
 	fn scan_hexdec_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'x');
 		self.store().consume();
-		self.store_while(|c| c.is_hexdec_numeral() || c == '_');
-		// self.scan_integral_literal_suffix()
-		let drained = self.drain_buffer();
-		self.make(Token::Literal(
-			LiteralToken::Integer(drained)))
+		if self.is_followed_by_min(1, |c| c.is_hexdec_numeral(), |c| c == '_') {
+			self.store_while(|c| c.is_hexdec_numeral() || c == '_');
+			self.scan_integer_suffix()
+		}
+		else {
+			self.make(Token::Error)
+		}
 	}
 
 	fn scan_decimal_literal(&mut self) -> Token {
@@ -259,9 +330,39 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		}
 	}
 
+	fn scan_float_literal_exponent(&mut self) -> Token {
+		match self.get() {
+			'e' => match self.store().consume().get() {
+				'+' | '-' => match self.store().consume().get() {
+					c if c.is_decimal_numeral() => {
+						self.store_while(|c| c.is_decimal_numeral());
+						let drained = self.drain_buffer();
+						self.make(Token::Literal(
+							LiteralToken::Float(drained)))
+					},
+					_ => self.make(Token::Error)
+				},
+				_ => {
+					self.make(Token::Error)
+				}
+			},
+			_ => {
+				let drained = self.drain_buffer();
+					self.make(Token::Literal(
+						LiteralToken::Float(drained)))
+			}
+		}
+	}
+
 	fn scan_float_literal(&mut self) -> Token {
 		assert_eq!(self.get(), '.');
-		Token::EndOfFile
+		if self.store().consume().get().is_decimal_numeral() {
+			self.store_while(|c| c.is_decimal_numeral() || c == '_');
+			self.scan_float_literal_exponent()
+		}
+		else {
+			self.make(Token::Error)
+		}
 	}
 
 	fn scan_number_literal(&mut self) -> Token {
@@ -277,7 +378,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 				'0' ... '9' | '_' => self.scan_decimal_literal(),
 
 				/* literal number suffix, e.g. 0i32 */
-				c if c.is_alpha() => self.scan_integral_literal_suffix(),
+				c if c.is_alpha() => self.make(Token::Error),
 
 				/* */
 				_ => self.make(Token::Error)
@@ -344,6 +445,13 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 			';' => self.consume().make(SemiColon),
 			',' => self.consume().make(Comma),
 			'_' => self.consume().make(Underscore),
+
+			/* Experimental syntax with the 'peek' construct */
+			// '.' => match self.peek_three() {
+			// 	('.','.','.') => self.consume_n(3).make(DotDotDot),
+			// 	('.','.', _ ) => self.consume_n(2).make(DotDot),
+			// 	_ => self.consume().make(Dot),
+			// },
 
 			/* Dot, DotDot and DotDotDot tokens */
 			'.' => match self.consume().get() {
@@ -419,6 +527,14 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 				'=' => self.consume().make(BinOpEq(Or)),
 				_   => self.make(BinOp(Or))
 			},
+
+			/* Experimental syntax with the peek() construct */
+			// '<' => match self.peek_three() {
+			// 	('<', '<', '=') => self.consume_n(3).make(BinOpEq(Shl)),
+			// 	('<', '<',  _ ) => self.consume_n(2).make(BinOp(Shl)),
+			// 	('<', '=',  _ ) => self.consume_n(2).make(RelOp(LessEq)),
+			// 	('<',  _ ,  _ ) => self.consume_n(1).make(RelOp(LessThan))
+			// },
 
 			/* Tokens starting with '<' */
 			'<' => match self.consume().get() {
@@ -559,21 +675,34 @@ mod tests {
 
 	#[test]
 	fn simple_integral_literals() {
+		use parser::token::Token::*;
 		let solution = vec![
 			Token::integer_literal_from_str("0b1011_0010_0000_0001"),
-			Token::Whitespace,
+			Whitespace,
 			Token::integer_literal_from_str("0o731_312_645_003"),
-			Token::Whitespace,
+			Whitespace,
 			Token::integer_literal_from_str("0xFF_AE_03_95"),
-			Token::Whitespace,
+			Whitespace,
 			Token::integer_literal_from_str("987654321"),
+			Whitespace,
+			Error,
+			Whitespace,
+			Error,
+			Whitespace,
+			Error,
+			Whitespace,
+			Token::integer_literal_from_str("0__")
 		];
 		let ctx   = CompileContext::default();
 		let lexer = Lexer::new_from_str(&ctx,
 			"0b1011_0010_0000_0001
 			 0o731_312_645_003
 			 0xFF_AE_03_95
-			 987654321");
+			 987654321
+			 0b_
+			 0o___
+			 0x_____
+			 0__");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
@@ -592,6 +721,9 @@ mod tests {
 			Token::Whitespace,
 			Token::float_literal_from_str("0.00001"),
 			Token::Whitespace,
+			Token::float_literal_from_str("1.23e+12"),
+			Token::Whitespace,
+			Token::float_literal_from_str("0.01e+07"),
 		];
 		let ctx = CompileContext::default();
 		let lexer = Lexer::new_from_str(&ctx,
@@ -599,7 +731,9 @@ mod tests {
 			 42.0
 			 0.24
 			 13.37
-			 0.00001");
+			 0.00001
+			 1.23e+12
+			 0.01e+07");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
