@@ -110,8 +110,7 @@ impl Token {
     }
 
     pub fn char_literal_from_str(slice: &str) -> Token {
-        let s = format!("'{}'", slice).to_owned().to_string();
-        Literal(Char(Rc::new(s)))
+        Literal(Char(Rc::new(slice.to_owned().to_string())))
     }
 
     pub fn integer_literal_from_str(slice: &str) -> Token {
@@ -123,8 +122,7 @@ impl Token {
     }
 
     pub fn string_literal_from_str(slice: &str) -> Token {
-        let s = format!("\"{}\"", slice).to_owned().to_string();
-        Literal(LiteralToken::String(Rc::new(s)))
+        Literal(LiteralToken::String(Rc::new(slice.to_owned().to_string())))
     }
 
     pub fn identifier_from_str(slice: &str) -> Token {

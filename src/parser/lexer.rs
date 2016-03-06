@@ -650,17 +650,22 @@ mod tests {
 
 	#[test]
 	fn simple_char_literal() {
+		use parser::token::Token::*;
 		let solution = vec![
-			Token::char_literal_from_str(r"c"),
-			Token::Whitespace,
-			Token::char_literal_from_str(r"\n"),
-			Token::Whitespace,
-			Token::char_literal_from_str(r"\t"),
-			Token::Whitespace,
-			Token::char_literal_from_str(r"\x7F")
+			Token::char_literal_from_str(r"'c'"),
+			Whitespace,
+			Token::char_literal_from_str(r"'\n'"),
+			Whitespace,
+			Token::char_literal_from_str(r"'\t'"),
+			Whitespace,
+			Token::char_literal_from_str(r"'\x7F'"),
+			Whitespace,
+			Token::char_literal_from_str(r"'a's"),
+			Whitespace,
+			Token::char_literal_from_str(r"'\n'asd0")
 		];
 		let ctx   = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx, r"'c' '\n' '\t' '\x7F'");
+		let lexer = Lexer::new_from_str(&ctx, r"'c' '\n' '\t' '\x7F' 'a's '\n'asd0");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
