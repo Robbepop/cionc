@@ -243,57 +243,32 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		count_valid >= n
 	}
 
-	// fn scan_signed_integer_suffix(&mut self) -> Token {
-	// 	assert_eq!(self.get(), 'i');
-	// 	match self.consume().peek_four() {
-	// 		('8',  _ ,  _ ,  _ ) => self.consume_n(1).make(Literal(Integer(I8))),
-	// 		('1', '6',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I16))),
-	// 		('3', '2',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I32))),
-	// 		('6', '4',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(I64))),
-	// 		('s', 'i', 'z', 'e') => self.consume_n(4).make(Literal(Integer(ISize))),
-	// 		_ => Token::Error
-	// 	}
-	// }
+	fn scan_integer_and_float_suffix(&mut self) -> &mut Self {
+		if self.get() == '\'' {
+			if self.consume().get().is_alpha() {
+				self.take_while(|c| c.is_alpha_numeral() || c == '_');
+			}
+			else {
+				// TODO: error!
+			}
+		}
+		self
+	}
 
-	// fn scan_unsigned_integer_suffix(&mut self) -> Token {
-	// 	assert_eq!(self.get(), 'u');
-	// 	match self.consume().peek_four() {
-	// 		('8',  _ ,  _ ,  _ ) => self.consume_n(1).make(Literal(Integer(U8))),
-	// 		('1', '6',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U16))),
-	// 		('3', '2',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U32))),
-	// 		('6', '4',  _ ,  _ ) => self.consume_n(2).make(Literal(Integer(U64))),
-	// 		('s', 'i', 'z', 'e') => self.consume_n(4).make(Literal(Integer(USize))),
-	// 		_ => Token::Error
-	// 	}
-	// }
-
-	// fn scan_float_suffix(&mut self) -> Token {
-	// 	assert_eq!(self.get(), 'f');
-	// 	match self.consume().peek_two() {
-	// 		('3', '2') => self.consume_n(2).make(Literal(Float(F32))),
-	// 		('6', '4') => self.consume_n(2).make(Literal(Float(F64))),
-	// 		_ => Token::Error
-	// 	}
-	// }
+	fn scan_float_suffix(&mut self) -> Token {
+		use parser::token::Token::*;
+		use parser::token::LiteralToken::Float;
+		self.scan_integer_and_float_suffix();
+		let drained = self.drain_buffer();
+		self.make(Literal(Float(drained)))
+	}
 
 	fn scan_integer_suffix(&mut self) -> Token {
 		use parser::token::Token::*;
 		use parser::token::LiteralToken::Integer;
-		if self.get() == '\'' {
-			if self.consume().get().is_alpha() {
-				self.take_while(|c| c.is_alpha_numeral() || c == '_');
-				let drained = self.drain_buffer();
-				self.make(Literal(Integer(drained)))
-			}
-			else {
-				/* expected at least one alpha character as suffix */
-				self.make(ErrStr(Rc::new("expected at least one alpha character as suffix".to_string())))
-			}
-		}
-		else {
-			let drained = self.drain_buffer();
-			self.make(Literal(Integer(drained)))
-		}
+		self.scan_integer_and_float_suffix();
+		let drained = self.drain_buffer();
+		self.make(Literal(Integer(drained)))
 	}
 
 	fn scan_binary_literal(&mut self) -> Token {
@@ -349,9 +324,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 				'+' | '-' => match self.consume().get() {
 					c if c.is_decimal_numeral() => {
 						self.take_while(|c| c.is_decimal_numeral());
-						let drained = self.drain_buffer();
-						self.make(Token::Literal(
-							LiteralToken::Float(drained)))
+						self.scan_float_suffix()
 					},
 					_ => self.make(Token::Error)
 				},
@@ -360,9 +333,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 				}
 			},
 			_ => {
-				let drained = self.drain_buffer();
-					self.make(Token::Literal(
-						LiteralToken::Float(drained)))
+				self.scan_float_suffix()
 			}
 		}
 	}
@@ -769,6 +740,32 @@ mod tests {
 			 1.23e+12
 			 0.01e+07
 			 1_.1_");
+		for zipped in solution.into_iter().zip(lexer) {
+			assert_eq!(zipped.0, zipped.1);
+		}
+	}
+
+	#[test]
+	fn simple_float_suffixes() {
+		use parser::token::Token::*;
+		let solution = vec![
+			Token::float_literal_from_str("0.0'f32"),
+			Whitespace,
+			Token::float_literal_from_str("567.0'i32"),
+			Whitespace,
+			Token::float_literal_from_str("9.9999'f64"),
+			Whitespace,
+			Token::float_literal_from_str("123.321e+14'alpha"),
+			Whitespace,
+			Token::float_literal_from_str("9.87654321e-0'b37a")
+		];
+		let ctx = CompileContext::default();
+		let lexer = Lexer::new_from_str(&ctx,
+			"0.0'f32
+			 567.0'i32
+			 9.9999'f64
+			 123.321e+14'alpha
+			 9.87654321e-0'b37a");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
