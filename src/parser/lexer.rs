@@ -11,7 +11,6 @@ use parser::compile_context::CompileContext;
 // I am fully aware of super-neat tools that can generate lexers and parser automatically,
 // however, I want to implement this to learn about Rust and because I also want full control
 // over things in my code base.
-// Besides that, ... I like the Rust's match expressions. :)
 // Keep in mind that this implementation isn't final as many things like scan_string_literal(...)
 // are still missing or are not completely implemented, yet (like scan_char_literal(...)).
 
@@ -47,16 +46,10 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		Lexer::new(ctx, content.chars())
 	}
 
-	/// Stores the current character into the buffer
-	/// and returns reference to self for method chaining
-	fn store(&mut self) -> &mut Self {
-		self.buffer.push(self.cur_char);
-		self
-	}
-
 	/// Consumes the next character unwraped and
 	/// returns reference to self for method chaining
 	fn consume(&mut self) -> &mut Self {
+		self.buffer.push(self.cur_char);
 		self.cur_char = self.input.next().unwrap_or('\0');
 		self
 	}
@@ -92,7 +85,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_line_comment(&mut self) -> Token {
 		assert_eq!(self.get(), '/');
-		self.skip_while(|c| c.is_none_of(&['\n','\0']));
+		self.take_while(|c| c.is_none_of(&['\n','\0']));
 		self.consume();
 		self.make(Token::Comment)
 	}
@@ -115,7 +108,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_identifier(&mut self) -> Token {
 		assert!(self.get().is_alpha());
-		self.store_while(|c| c.is_alpha_numeral() || c == '_');
+		self.take_while(|c| c.is_alpha_numeral() || c == '_');
 		let drained = self.drain_buffer();
 		self.make(Token::Identifier(drained))
 
@@ -124,84 +117,105 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		// self.make(Token::Identifier(self.drain_buffer()))
 	}
 
-	fn scan_char_literal(&mut self) -> Token {
+	fn scan_char_suffix(&mut self) -> Token {
 		use parser::token::Token::*;
+		use parser::token::LiteralToken::Char;
 		assert_eq!(self.get(), '\'');
 		match self.consume().get() {
-			/* error: empty character literal */
-			'\'' => self.make(Error),
+			c if c.is_alpha() => {
+				self.take_while(|c| c.is_alpha_numeral() || c == '_');
+				let drained = self.drain_buffer();
+				self.make(Literal(Char(drained)))
+			},
+			_ => {
+				let drained = self.drain_buffer();
+				self.make(Literal(Char(drained)))
+			}
+		}
+	}
 
-			/* escape characters */
-			'\\' => match self.store().consume().get() {
-				/* special escape characters */
-				'n'  |
-				't'  |
-				'r'  |
-				'\\' |
-				'\'' => match self.store().consume().get() {
-					'\'' => {
-						self.consume();
-						let drained = self.drain_buffer();
-						self.make(Literal(LiteralToken::Char(drained)))
-					},
-					_ => self.make(Error)
-				},
+	// Accepts closed char sequences and forwards to the suffix scanning routine.
+	// e.g. 'a'.
+	fn scan_char_closure(&mut self) -> Token {
+		use parser::token::Token::Error;
+		match self.get() {
+			'\'' => self.scan_char_suffix(),
+			_    => self.make(Error) // error: expected a ' to close char literal!
+		}
+	}
 
-				/* hex-code unicode followed by two hex-digits */
-				'x' => match self.store().consume().get() {
-					/* error: no hex-digits provided */
-					'\'' => self.make(Error),
+	// Accepts char sequences for short-unicode annotation.
+	// e.g. '\x7F'
+	fn scan_char_ascii_hexcode(&mut self) -> Token {
+		use parser::token::Token::Error;
+		assert_eq!(self.get(), 'x');
+		match self.consume().get() {
+			/* valid unicode starting code-point */
+			'0' ... '7' => match self.consume().get() {
+				/* valid unicode 2nd code-point given */
+				'0' ... '9' |
+				'A' ... 'F' => self.consume().scan_char_closure(),
 
-					/* valid unicode starting code-point */
-					'0' ... '7' => match self.store().consume().get() {
-						/* error: just one unicode code-point given */
-						'\'' => self.make(Error),
+				/* error: requires upper-case alphas */
+				'a' ... 'z' => self.make(Error),
 
-						/* valid unicode 2nd code-point given */
-						'0' ... '9' |
-						'a' ... 'f' |
-						'A' ... 'F' => match self.store().consume().get() {
-							/* valid closed unicode char literal */
-							'\'' => {
-								let drained = self.drain_buffer();
-								self.make(Literal(
-									LiteralToken::Char(drained)))
-							},
-							/* error: has to close after two hex-digits */
-							_ => self.make(Error)
-						},
+				/* error: just one unicode code-point given */
+				'\'' => self.make(Error),
 
-						/* error: invalid 2nd code-point */
-						_ => self.make(Error)
-					},
-
-					/* invalid starting points for unicode */
-					'8' ... '9' |
-					'a' ... 'f' |
-					'A' ... 'F' => self.make(Error),
-
-					/* anything else invalid */
-					_ => self.make(Error)
-				},
-
-				/* uni-code up to 6 hex-digits (TODO) */
-				'u' => match self.store().consume().get() {
-					_ => self.make(Error)
-				},
-
-				/* no valid escape character read */
+				/* error: invalid 2nd code-point */
 				_ => self.make(Error)
 			},
 
-			/* normal ascii charater literal */
-			_ => match self.store().consume().get() {
-				'\'' => {
-					let drained = self.drain_buffer();
-					self.consume().make(Literal(
-						LiteralToken::Char(drained)))
-				},
-				_ => self.make(Error) // more than one code-point in character literal
-			}
+			/* error: no hex-digits provided */
+			'\'' => self.make(Error),
+
+			/* error: requires upper-case alphas */
+			'a' ... 'z' => self.make(Error),
+
+			/* error: invalid starting points */
+			'8' ... '9' |
+			'A' ... 'F' => self.make(Error),
+
+			/* anything else invalid */
+			_ => self.make(Error)
+		}
+	}
+
+	// Accepts char sequences for long-unicode annotation.
+	// e.g. '\u{7FFFFF}'
+	fn scan_char_unicode(&mut self) -> Token {
+		assert_eq!(self.get(), 'u');
+		// TODO ...
+		self.scan_char_closure()
+	}
+
+	// Accepts char sequences with escape sequences as content.
+	// e.g. '\n', '\\', '\'', '\x7F' or '\u{7FFFFF}', etc.
+	fn scan_char_escape_sequence(&mut self) -> Token {
+		use parser::token::Token::Error;
+		assert_eq!(self.get(), '\\');
+		match self.consume().get() {
+			'0'  | /* Null */
+			'n'  | /* LineFeed */
+			'r'  | /* CarryReturn */
+			't'  | /* Tab */
+			'\\'   /* BackSlash */ => self.consume().scan_char_closure(),
+
+			'x' => self.scan_char_ascii_hexcode(),
+			'u' => self.scan_char_unicode(),
+			'\'' => self.make(Error), // error: empty char literal!
+			_ => self.make(Error) // error: unknown escape sequence!
+		}
+	}
+
+	fn scan_char_literal(&mut self) -> Token {
+		use std::ascii::AsciiExt;
+		use parser::token::Token::*;
+		assert_eq!(self.get(), '\'');
+		match self.consume().get() {
+			'\\' => self.scan_char_escape_sequence(),
+			c if c.is_ascii() => self.consume().scan_char_closure(),
+			_ => self.make(Error) // error: no valid ascii!
 		}
 	}
 
@@ -217,10 +231,10 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		loop {
 			if pred_counted(self.get()) {
 				count_valid += 1;
-				self.store().consume();
+				self.consume();
 			}
 			else if pred_uncounted(self.get()) {
-				self.store().consume();
+				self.consume();
 			}
 			else {
 				break;
@@ -283,9 +297,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_binary_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'b');
-		self.store().consume();
+		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_binary_numeral(), |c| c == '_') {
-			self.store_while(|c| c.is_binary_numeral() || c == '_');
+			self.take_while(|c| c.is_binary_numeral() || c == '_');
 			self.scan_integer_suffix()
 		}
 		else {
@@ -295,9 +309,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_octal_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'o');
-		self.store().consume();
+		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_octal_numeral(), |c| c == '_') {
-			self.store_while(|c| c.is_octal_numeral() || c == '_');
+			self.take_while(|c| c.is_octal_numeral() || c == '_');
 			self.scan_integer_suffix()
 		}
 		else {
@@ -307,9 +321,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_hexdec_literal(&mut self) -> Token {
 		assert_eq!(self.get(), 'x');
-		self.store().consume();
+		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_hexdec_numeral(), |c| c == '_') {
-			self.store_while(|c| c.is_hexdec_numeral() || c == '_');
+			self.take_while(|c| c.is_hexdec_numeral() || c == '_');
 			self.scan_integer_suffix()
 		}
 		else {
@@ -319,7 +333,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_decimal_literal(&mut self) -> Token {
 		assert!(self.get().is_decimal_numeral() || self.get() == '_');
-		self.store_while(|c| c.is_decimal_numeral() || c == '_');
+		self.take_while(|c| c.is_decimal_numeral() || c == '_');
 		match self.get() {
 			'.' => self.scan_float_literal(),
 			_ => {
@@ -332,10 +346,10 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_float_literal_exponent(&mut self) -> Token {
 		match self.get() {
-			'e' => match self.store().consume().get() {
-				'+' | '-' => match self.store().consume().get() {
+			'e' => match self.consume().get() {
+				'+' | '-' => match self.consume().get() {
 					c if c.is_decimal_numeral() => {
-						self.store_while(|c| c.is_decimal_numeral());
+						self.take_while(|c| c.is_decimal_numeral());
 						let drained = self.drain_buffer();
 						self.make(Token::Literal(
 							LiteralToken::Float(drained)))
@@ -356,8 +370,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 
 	fn scan_float_literal(&mut self) -> Token {
 		assert_eq!(self.get(), '.');
-		if self.store().consume().get().is_decimal_numeral() {
-			self.store_while(|c| c.is_decimal_numeral() || c == '_');
+		if self.consume().get().is_decimal_numeral() {
+			self.take_while(|c| c.is_decimal_numeral() || c == '_');
 			self.scan_float_literal_exponent()
 		}
 		else {
@@ -368,7 +382,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_number_literal(&mut self) -> Token {
 		assert!(self.get().is_decimal_numeral());
 		match self.get() {
-			'0' => match self.store().consume().get() {
+			'0' => match self.consume().get() {
 				'b' => self.scan_binary_literal(),
 				'o' => self.scan_octal_literal(),
 				'x' => self.scan_hexdec_literal(),
@@ -391,20 +405,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		}
 	}
 
-	/// Stores all characters from input as long as they fullfill the given predicate
+	/// Take all characters from input as long as they fullfill the given predicate
 	/// and returns reference to self for method chaining
-	fn store_while<P>(&mut self, predicate: P) -> &mut Self
-		where P: Fn(char) -> bool
-	{
-		while predicate(self.get()) {
-			self.store().consume();
-		}
-		self
-	}
-
-	/// Skips all characters from input as long as they fullfill the given predicate
-	/// and returns reference to self for method chaining
-	fn skip_while<P>(&mut self, predicate: P) -> &mut Self
+	fn take_while<P>(&mut self, predicate: P) -> &mut Self
 		where P: Fn(char) -> bool
 	{
 		while predicate(self.get()) {
@@ -425,7 +428,7 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 		match self.get() {
 			/* Skip whitespace */
 			c if c.is_whitespace() => {
-				self.skip_while(|c| c.is_whitespace());
+				self.take_while(|c| c.is_whitespace());
 				self.make(Whitespace)
 			},
 
@@ -648,13 +651,13 @@ mod tests {
 	#[test]
 	fn simple_char_literal() {
 		let solution = vec![
-			Token::char_literal_from_str("c"),
+			Token::char_literal_from_str(r"c"),
 			Token::Whitespace,
-			Token::char_literal_from_str("\n"),
+			Token::char_literal_from_str(r"\n"),
 			Token::Whitespace,
-			Token::char_literal_from_str("\t"),
+			Token::char_literal_from_str(r"\t"),
 			Token::Whitespace,
-			Token::char_literal_from_str("\x7F")
+			Token::char_literal_from_str(r"\x7F")
 		];
 		let ctx   = CompileContext::default();
 		let lexer = Lexer::new_from_str(&ctx, r"'c' '\n' '\t' '\x7F'");
@@ -724,6 +727,9 @@ mod tests {
 			Token::float_literal_from_str("1.23e+12"),
 			Token::Whitespace,
 			Token::float_literal_from_str("0.01e+07"),
+			Token::Whitespace,
+			Token::float_literal_from_str("1_.1_"),
+			Token::EndOfFile
 		];
 		let ctx = CompileContext::default();
 		let lexer = Lexer::new_from_str(&ctx,
@@ -733,7 +739,8 @@ mod tests {
 			 13.37
 			 0.00001
 			 1.23e+12
-			 0.01e+07");
+			 0.01e+07
+			 1_.1_");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}

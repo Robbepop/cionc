@@ -101,39 +101,33 @@ pub enum Token {
     Error
 }
 
+use parser::token::Token::{Identifier, Literal};
+use parser::token::LiteralToken::{Char, Bool, Integer, Float};
+
 impl Token {
     pub fn bool_literal_from_str(slice: &str) -> Token {
-        Token::Literal(
-            LiteralToken::Bool(
-                Rc::new(String::from(slice))))
+        Literal(Bool(Rc::new(String::from(slice))))
     }
 
     pub fn char_literal_from_str(slice: &str) -> Token {
-        Token::Literal(
-            LiteralToken::Char(
-                Rc::new(String::from(slice))))
+        let s = format!("'{}'", slice).to_owned().to_string();
+        Literal(Char(Rc::new(s)))
     }
 
     pub fn integer_literal_from_str(slice: &str) -> Token {
-        Token::Literal(
-            LiteralToken::Integer(
-                Rc::new(String::from(slice))))
+        Literal(Integer(Rc::new(String::from(slice))))
     }
 
     pub fn float_literal_from_str(slice: &str) -> Token {
-        Token::Literal(
-            LiteralToken::Float(
-                Rc::new(String::from(slice))))
+        Literal(Float(Rc::new(String::from(slice))))
     }
 
     pub fn string_literal_from_str(slice: &str) -> Token {
-        Token::Literal(
-            LiteralToken::String(
-                Rc::new(String::from(slice))))
+        let s = format!("\"{}\"", slice).to_owned().to_string();
+        Literal(LiteralToken::String(Rc::new(s)))
     }
 
     pub fn identifier_from_str(slice: &str) -> Token {
-        Token::Identifier(
-            Rc::new(String::from(slice)))
+        Identifier(Rc::new(String::from(slice)))
     }
 }

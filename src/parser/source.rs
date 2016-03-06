@@ -71,27 +71,34 @@ struct Source {
 
 	/// The content of the source file. This is an immutable String
 	/// that is initialized on construction of a Source.
-	pub content: String,
+	pub content: Rc<String>,
+	let c = "hello"°s
 
 	/// This is the character (or byte) range that is acceptable for
 	/// for this Source to access its internal content.
 	/// Source's partition the global range of bytes into disjoint chunks
 	/// of byte ranges.
-	pub range: ByteRange,
+	range: ByteRange,
 
 	/// This is initialized upon construction of a Source
 	/// and later used to speed-up construction of SourceLoc data
 	/// that shows line and column count to the user (programmer)
 	/// on error handling info text.
-	pub line_starts: Vec<BytePos>
+	line_starts: Vec<BytePos>
 }
 
 impl Source {
+	// fn new(global_offset: BytePos, file_name: String, content: String) -> Source {
+		// TODO		
+	// }
+	let x = 5.45e-12'u32;
+	let y = 42'i64;
+	let z = '\0'u8;
+	let a = "Hello, World!"s;
 	fn content_from_range(&self, byte_range: ByteRange) -> String {
-		let offset = self.range.begin;
+		let off = self.range.begin;
 		self.content[
-			(byte_range.begin - offset).to_usize() .. 
-			(byte_range.end - offset).to_usize()
+			(byte_range.begin - off).to_usize() .. (byte_range.end - off).to_usize()
 		].to_string()
 	}
 }
