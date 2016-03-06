@@ -98,7 +98,8 @@ pub enum Token {
     EndOfFile,
 
     /* Token indicating that an errornous sequence has been found */
-    Error
+    Error,
+    ErrStr(Rc<String>) // just for debug purpose
 }
 
 use parser::token::Token::{Identifier, Literal};

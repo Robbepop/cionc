@@ -277,22 +277,23 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	// }
 
 	fn scan_integer_suffix(&mut self) -> Token {
-		// if self.get() == '\'' {
-		// 	match self.consume().get() {
-		// 		'i' => self.scan_signed_integer_suffix(),
-		// 		'u' => self.scan_unsigned_integer_suffix(),
-		// 		'f' => self.scan_float_suffix(),
-		// 		 _  => {
-		// 			let drained = self.drain_buffer();
-		// 			self.make(Token::Literal(LiteralToken::Integer(drained)))
-		// 		 }
-		// 	}
-		// } else {
-		// 	let drained = self.drain_buffer();
-		// 	self.make(Token::Literal(LiteralToken::Integer(drained)))
-		// }
-		let drained = self.drain_buffer();
-		self.make(Token::Literal(LiteralToken::Integer(drained)))
+		use parser::token::Token::*;
+		use parser::token::LiteralToken::Integer;
+		if self.get() == '\'' {
+			if self.consume().get().is_alpha() {
+				self.take_while(|c| c.is_alpha_numeral() || c == '_');
+				let drained = self.drain_buffer();
+				self.make(Literal(Integer(drained)))
+			}
+			else {
+				/* expected at least one alpha character as suffix */
+				self.make(ErrStr(Rc::new("expected at least one alpha character as suffix".to_string())))
+			}
+		}
+		else {
+			let drained = self.drain_buffer();
+			self.make(Literal(Integer(drained)))
+		}
 	}
 
 	fn scan_binary_literal(&mut self) -> Token {
@@ -337,9 +338,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		match self.get() {
 			'.' => self.scan_float_literal(),
 			_ => {
-				let drained = self.drain_buffer();
-				self.make(Token::Literal(
-					LiteralToken::Integer(drained)))
+				self.scan_integer_suffix()
 			}
 		}
 	}
@@ -711,6 +710,30 @@ mod tests {
 			 0o___
 			 0x_____
 			 0__");
+		for zipped in solution.into_iter().zip(lexer) {
+			assert_eq!(zipped.0, zipped.1);
+		}
+	}
+
+	#[test]
+	fn simple_integral_suffixes() {
+		use parser::token::Token::*;
+		let solution = vec![
+			Token::integer_literal_from_str("0b0000__0101__1111_0001'i32"),
+			Whitespace,
+			Token::integer_literal_from_str("0o123_456_777_000'u64"),
+			Whitespace,
+			Token::integer_literal_from_str("0xFA_01_DE_23'f32"),
+			Whitespace,
+			Token::integer_literal_from_str("1234567890'hello_word")
+		];
+		let ctx = CompileContext::default();
+		let lexer = Lexer::new_from_str(&ctx,
+			"0b0000__0101__1111_0001'i32
+			 0o123_456_777_000'u64
+			 0xFA_01_DE_23'f32
+			 1234567890'hello_word"
+		);
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
