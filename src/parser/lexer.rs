@@ -1,5 +1,6 @@
 use std::str::Chars;
 use std::rc::Rc;
+use std::collections::VecDeque;
 
 use util::is_any_of::*;
 use parser::util::char_util::CharProperties;
@@ -8,17 +9,15 @@ use parser::token_stream::TokenStream;
 use parser::compile_context::CompileContext;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
-// I am fully aware of super-neat tools that can generate lexers and parser automatically,
-// however, I want to implement this to learn about Rust and because I also want full control
-// over things in my code base.
-// Keep in mind that this implementation isn't final as many things like scan_string_literal(...)
-// are still missing or are not completely implemented, yet (like scan_char_literal(...)).
+//
+// This implementation is still experimental!
+// Many things like scan_string_literal(...) are still missing or are not implemented at all.
 
 pub struct Lexer<'input, 'ctx> {
 	context: &'ctx CompileContext,
 	input: Chars<'input>,
 	buffer: String,
-	cur_char: char
+	peeked: VecDeque<char>
 }
 
 impl<'input, 'ctx> Lexer<'input, 'ctx> {
@@ -32,8 +31,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 			context: ctx,
 			input: iterator,
 			buffer: String::new(),
-			cur_char: '\0' };
-		lexer.consume();
+			peeked: VecDeque::new()
+		};
+		lexer.pull();
 		lexer
 	}
 
@@ -46,17 +46,50 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		Lexer::new(ctx, content.chars())
 	}
 
-	/// Consumes the next character unwraped and
-	/// returns reference to self for method chaining
-	fn consume(&mut self) -> &mut Self {
-		self.buffer.push(self.cur_char);
-		self.cur_char = self.input.next().unwrap_or('\0');
+	fn pull(&mut self) -> &mut Self {
+		let pulled = self.input.next().unwrap_or('\0');
+		self.peeked.push_back(pulled);
 		self
 	}
 
-	/// Returns the char from input which was read last
-	fn get(&self) -> char {
-		self.cur_char
+	fn consume(&mut self) -> &mut Self {
+		assert!(!self.peeked.is_empty());
+		let consumed = self.peeked.pop_front().unwrap();
+		self.buffer.push(consumed);
+		self
+	}
+
+	fn consume_n(&mut self, n: usize) -> &mut Self {
+		assert!(n <= self.peeked.len());
+		for _ in 0..n {
+			self.consume();
+		}
+		self
+	}
+
+	fn peek(&mut self) -> char {
+		if self.peeked.is_empty() {
+			self.pull();
+		}
+		self.peeked[0]
+	}
+
+	fn peek_2(&mut self) -> (char, char) {
+		use std::cmp;
+		let pulls_required = cmp::max(0, (2 - (self.peeked.len() as isize)));
+		for _ in 0..pulls_required {
+			self.pull();
+		}
+		(self.peeked[0], self.peeked[1])
+	}
+
+	fn peek_3(&mut self) -> (char, char, char) {
+		use std::cmp;
+		let pulls_required = cmp::max(0, (3 - (self.peeked.len() as isize)));
+		for _ in 0..pulls_required {
+			self.pull();
+		}
+		(self.peeked[0], self.peeked[1], self.peeked[2])
 	}
 
 	/// Returns the given token, used as helper method
@@ -84,18 +117,18 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_line_comment(&mut self) -> Token {
-		assert_eq!(self.get(), '/');
+		assert_eq!(self.peek(), '/');
 		self.take_while(|c| c.is_none_of(&['\n','\0']));
 		self.consume();
 		self.make(Token::Comment)
 	}
 
 	fn scan_multi_line_comment(&mut self) -> Token {
-		assert_eq!(self.get(), '*');
+		assert_eq!(self.peek(), '*');
 		self.consume();
 		loop {
-			match self.get() {
-				'*' => match self.consume().get() {
+			match self.peek() {
+				'*' => match self.consume().peek() {
 					'/' => return self.consume().make(Token::Comment),
 					'*' => continue,
 					_   => self.consume()
@@ -107,7 +140,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_identifier(&mut self) -> Token {
-		assert!(self.get().is_alpha());
+		assert!(self.peek().is_alpha());
 		self.take_while(|c| c.is_alpha_numeral() || c == '_');
 		let drained = self.drain_buffer();
 		self.make(Token::Identifier(drained))
@@ -120,8 +153,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_char_suffix(&mut self) -> Token {
 		use parser::token::Token::*;
 		use parser::token::LiteralToken::Char;
-		assert_eq!(self.get(), '\'');
-		match self.consume().get() {
+		assert_eq!(self.peek(), '\'');
+		match self.consume().peek() {
 			c if c.is_alpha() => {
 				self.take_while(|c| c.is_alpha_numeral() || c == '_');
 				let drained = self.drain_buffer();
@@ -138,7 +171,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	// e.g. 'a'.
 	fn scan_char_closure(&mut self) -> Token {
 		use parser::token::Token::Error;
-		match self.get() {
+		match self.peek() {
 			'\'' => self.scan_char_suffix(),
 			_    => self.make(Error) // error: expected a ' to close char literal!
 		}
@@ -148,10 +181,10 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	// e.g. '\x7F'
 	fn scan_char_ascii_hexcode(&mut self) -> Token {
 		use parser::token::Token::Error;
-		assert_eq!(self.get(), 'x');
-		match self.consume().get() {
+		assert_eq!(self.peek(), 'x');
+		match self.consume().peek() {
 			/* valid unicode starting code-point */
-			'0' ... '7' => match self.consume().get() {
+			'0' ... '7' => match self.consume().peek() {
 				/* valid unicode 2nd code-point given */
 				'0' ... '9' |
 				'A' ... 'F' => self.consume().scan_char_closure(),
@@ -184,7 +217,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	// Accepts char sequences for long-unicode annotation.
 	// e.g. '\u{7FFFFF}'
 	fn scan_char_unicode(&mut self) -> Token {
-		assert_eq!(self.get(), 'u');
+		assert_eq!(self.peek(), 'u');
 		// TODO ...
 		self.scan_char_closure()
 	}
@@ -193,8 +226,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	// e.g. '\n', '\\', '\'', '\x7F' or '\u{7FFFFF}', etc.
 	fn scan_char_escape_sequence(&mut self) -> Token {
 		use parser::token::Token::Error;
-		assert_eq!(self.get(), '\\');
-		match self.consume().get() {
+		assert_eq!(self.peek(), '\\');
+		match self.consume().peek() {
 			'0'  | /* Null */
 			'n'  | /* LineFeed */
 			'r'  | /* CarryReturn */
@@ -211,8 +244,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_char_literal(&mut self) -> Token {
 		use std::ascii::AsciiExt;
 		use parser::token::Token::*;
-		assert_eq!(self.get(), '\'');
-		match self.consume().get() {
+		assert_eq!(self.peek(), '\'');
+		match self.consume().peek() {
 			'\\' => self.scan_char_escape_sequence(),
 			c if c.is_ascii() => self.consume().scan_char_closure(),
 			_ => self.make(Error) // error: no valid ascii!
@@ -220,32 +253,12 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_string_literal(&mut self) -> Token {
-		self.make(Token::Error)
-	}
-
-	fn is_followed_by_min<C, U>(&mut self, n: usize, pred_counted: C, pred_uncounted: U) -> bool
-		where C: Fn(char) -> bool,
-		      U: Fn(char) -> bool
-	{
-		let mut count_valid = 0usize;
-		loop {
-			if pred_counted(self.get()) {
-				count_valid += 1;
-				self.consume();
-			}
-			else if pred_uncounted(self.get()) {
-				self.consume();
-			}
-			else {
-				break;
-			}
-		}
-		count_valid >= n
+		self.make(Token::Error) // TODO
 	}
 
 	fn scan_integer_and_float_suffix(&mut self) -> &mut Self {
-		if self.get() == '\'' {
-			if self.consume().get().is_alpha() {
+		if self.peek() == '\'' {
+			if self.consume().peek().is_alpha() {
 				self.take_while(|c| c.is_alpha_numeral() || c == '_');
 			}
 			else {
@@ -272,7 +285,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_binary_literal(&mut self) -> Token {
-		assert_eq!(self.get(), 'b');
+		assert_eq!(self.peek(), 'b');
 		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_binary_numeral(), |c| c == '_') {
 			self.take_while(|c| c.is_binary_numeral() || c == '_');
@@ -284,7 +297,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_octal_literal(&mut self) -> Token {
-		assert_eq!(self.get(), 'o');
+		assert_eq!(self.peek(), 'o');
 		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_octal_numeral(), |c| c == '_') {
 			self.take_while(|c| c.is_octal_numeral() || c == '_');
@@ -296,7 +309,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_hexdec_literal(&mut self) -> Token {
-		assert_eq!(self.get(), 'x');
+		assert_eq!(self.peek(), 'x');
 		self.consume();
 		if self.is_followed_by_min(1, |c| c.is_hexdec_numeral(), |c| c == '_') {
 			self.take_while(|c| c.is_hexdec_numeral() || c == '_');
@@ -308,9 +321,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_decimal_literal(&mut self) -> Token {
-		assert!(self.get().is_decimal_numeral() || self.get() == '_');
+		assert!(self.peek().is_decimal_numeral() || self.peek() == '_');
 		self.take_while(|c| c.is_decimal_numeral() || c == '_');
-		match self.get() {
+		match self.peek() {
 			'.' => self.scan_float_literal(),
 			_ => {
 				self.scan_integer_suffix()
@@ -319,9 +332,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_float_literal_exponent(&mut self) -> Token {
-		match self.get() {
-			'e' => match self.consume().get() {
-				'+' | '-' => match self.consume().get() {
+		match self.peek() {
+			'e' => match self.consume().peek() {
+				'+' | '-' => match self.consume().peek() {
 					c if c.is_decimal_numeral() => {
 						self.take_while(|c| c.is_decimal_numeral());
 						self.scan_float_suffix()
@@ -339,8 +352,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_float_literal(&mut self) -> Token {
-		assert_eq!(self.get(), '.');
-		if self.consume().get().is_decimal_numeral() {
+		assert_eq!(self.peek(), '.');
+		if self.consume().peek().is_decimal_numeral() {
 			self.take_while(|c| c.is_decimal_numeral() || c == '_');
 			self.scan_float_literal_exponent()
 		}
@@ -350,22 +363,19 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_number_literal(&mut self) -> Token {
-		assert!(self.get().is_decimal_numeral());
-		match self.get() {
-			'0' => match self.consume().get() {
+		assert!(self.peek().is_decimal_numeral());
+		match self.peek() {
+			'0' => match self.consume().peek() {
 				'b' => self.scan_binary_literal(),
 				'o' => self.scan_octal_literal(),
 				'x' => self.scan_hexdec_literal(),
 				'.' => self.scan_float_literal(),
 
-				/* dec number literals cannot start with '0' */
+				/* decimal number literal */
 				'0' ... '9' | '_' => self.scan_decimal_literal(),
 
-				/* literal number suffix, e.g. 0i32 */
-				c if c.is_alpha() => self.make(Token::Error),
-
-				/* */
-				_ => self.make(Token::Error)
+				/* just a null (0) */
+				_ => self.scan_integer_suffix()
 			},
 
 			/* decimal number literal */
@@ -375,12 +385,32 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		}
 	}
 
+	fn is_followed_by_min<C, U>(&mut self, n: usize, pred_counted: C, pred_uncounted: U) -> bool
+		where C: Fn(char) -> bool,
+		      U: Fn(char) -> bool
+	{
+		let mut count_valid = 0usize;
+		loop {
+			if pred_counted(self.peek()) {
+				count_valid += 1;
+				self.consume();
+			}
+			else if pred_uncounted(self.peek()) {
+				self.consume();
+			}
+			else {
+				break;
+			}
+		}
+		count_valid >= n
+	}
+
 	/// Take all characters from input as long as they fullfill the given predicate
 	/// and returns reference to self for method chaining
 	fn take_while<P>(&mut self, predicate: P) -> &mut Self
 		where P: Fn(char) -> bool
 	{
-		while predicate(self.get()) {
+		while predicate(self.peek()) {
 			self.consume();
 		}
 		self
@@ -395,7 +425,7 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 		use parser::token::LogicalOpToken::*;
 		use parser::token::RelOpToken::*;
 		self.clear_buffer();
-		match self.get() {
+		match self.peek() {
 			/* Skip whitespace */
 			c if c.is_whitespace() => {
 				self.take_while(|c| c.is_whitespace());
@@ -419,43 +449,34 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 			',' => self.consume().make(Comma),
 			'_' => self.consume().make(Underscore),
 
-			/* Experimental syntax with the 'peek' construct */
-			// '.' => match self.peek_three() {
-			// 	('.','.','.') => self.consume_n(3).make(DotDotDot),
-			// 	('.','.', _ ) => self.consume_n(2).make(DotDot),
-			// 	_ => self.consume().make(Dot),
-			// },
-
 			/* Dot, DotDot and DotDotDot tokens */
-			'.' => match self.consume().get() {
-				'.' => match self.consume().get() {
-					'.' => self.consume().make(DotDotDot),
-					_   => self.make(DotDot)
-				},
-				_ => self.make(Dot)
+			'.' => match self.consume().peek_2() {
+				('.', '.') => self.consume_n(2).make(DotDotDot),
+				('.',  _ ) => self.consume().make(DotDot),
+				( _ ,  _ ) => self.make(Dot)
 			},
 
 			/* Tokens starting with '+' */
-			'+' => match self.consume().get() {
+			'+' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Plus)),
 				_   => self.make(BinOp(Plus))
 			},
 
 			/* Tokens starting with '-' */
-			'-' => match self.consume().get() {
+			'-' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Minus)),
 				'>' => self.consume().make(Arrow),
 				_   => self.make(BinOp(Minus))
 			},
 
 			/* Tokens starting with '*' */
-			'*' => match self.consume().get() {
+			'*' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Star)),
 				_   => self.make(BinOp(Star))
 			},
 
 			/* Tokens starting with '/' */
-			'/' => match self.consume().get() {
+			'/' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Slash)),
 				'/' => self.scan_line_comment(),
 				'*' => self.scan_multi_line_comment(),
@@ -463,75 +484,63 @@ impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
 			},
 
 			/* Tokens starting with '%' */
-			'%' => match self.consume().get() {
+			'%' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Percent)),
 				_   => self.make(BinOp(Percent))
 			},
 
 			/* Tokens starting with '^' */
-			'^' => match self.consume().get() {
+			'^' => match self.consume().peek() {
 				'=' => self.consume().make(BinOpEq(Caret)),
 				_   => self.make(BinOp(Caret))
 			},
 
 			/* Tokens starting with '!' */
-			'!' => match self.consume().get() {
+			'!' => match self.consume().peek() {
 				'=' => self.consume().make(RelOp(NotEq)),
 				_   => self.make(Exclamation)
 			},
 
 			/* Tokens starting with '=' */
-			'=' => match self.consume().get() {
+			'=' => match self.consume().peek() {
 				'>' => self.consume().make(FatArrow),
 				'=' => self.consume().make(RelOp(EqEq)),
 				_   => self.make(Eq)
 			},
 
 			/* Tokens starting with '&' */
-			'&' => match self.consume().get() {
+			'&' => match self.consume().peek() {
 				'&' => self.consume().make(LogicalOp(AndAnd)),
 				'=' => self.consume().make(BinOpEq(And)),
 				_   => self.make(BinOp(And))
 			},
 
 			/* Tokens starting with '|' */
-			'|' => match self.consume().get() {
+			'|' => match self.consume().peek() {
 				'|' => self.consume().make(LogicalOp(OrOr)),
 				'=' => self.consume().make(BinOpEq(Or)),
 				_   => self.make(BinOp(Or))
 			},
 
-			/* Experimental syntax with the peek() construct */
-			// '<' => match self.peek_three() {
-			// 	('<', '<', '=') => self.consume_n(3).make(BinOpEq(Shl)),
-			// 	('<', '<',  _ ) => self.consume_n(2).make(BinOp(Shl)),
-			// 	('<', '=',  _ ) => self.consume_n(2).make(RelOp(LessEq)),
-			// 	('<',  _ ,  _ ) => self.consume_n(1).make(RelOp(LessThan))
-			// },
-
 			/* Tokens starting with '<' */
-			'<' => match self.consume().get() {
-				'<' => match self.consume().get() {
-					'=' => self.consume().make(BinOpEq(Shl)),
-					_   => self.make(BinOp(Shl))
-				},
-				'=' => self.consume().make(RelOp(LessEq)),
-				_   => self.make(RelOp(LessThan))
+			'<' => match self.consume().peek_2() {
+				('<', '=') => self.consume_n(2).make(BinOpEq(Shl)),
+				('<',  _ ) => self.consume().make(BinOp(Shl)),
+				('=',  _ ) => self.consume().make(RelOp(LessEq)),
+				( _ ,  _ ) => self.make(RelOp(LessThan))
 			},
 
 			/* Tokens starting with '>' */
-			'>' => match self.consume().get() {
-				'>' => match self.consume().get() {
-					'=' => self.consume().make(BinOpEq(Shr)),
-					_   => self.make(BinOp(Shr))
-				},
-				'=' => self.consume().make(RelOp(GreaterEq)),
-				_   => self.make(RelOp(GreaterThan))
+			'>' => match self.consume().peek_2() {
+				('>', '=') => self.consume_n(2).make(BinOpEq(Shr)),
+				('>',  _ ) => self.consume().make(BinOp(Shr)),
+				('=',  _ ) => self.consume().make(RelOp(GreaterEq)),
+				( _ ,  _ ) => self.make(RelOp(GreaterThan))
 			},
 
 			/* Char and string literals */
 			'\'' => self.scan_char_literal(),
-			'\"' => self.scan_string_literal(),
+			'"' => self.scan_string_literal(),
 
 			/* Integer- and float literals and identifiers */
 			c if c.is_decimal_numeral() => self.scan_number_literal(),
@@ -793,6 +802,27 @@ mod tests {
 			 with_underscore
 			 underscores_at_the_end__
 			 with_n0m3r5");
+		for zipped in solution.into_iter().zip(lexer) {
+			assert_eq!(zipped.0, zipped.1);
+		}
+	}
+
+	#[test]
+	fn simple_less_symbol() {
+		use parser::token::Token::*;
+		use parser::token::BinOpToken::*;
+		use parser::token::RelOpToken::*;
+		let solution: Vec<Token> = vec![
+			BinOpEq(Shl),
+			Whitespace,
+			BinOp(Shl),
+			Whitespace,
+			RelOp(LessEq),
+			Whitespace,
+			RelOp(LessThan)
+		];
+		let ctx = CompileContext::default();
+		let lexer = Lexer::new_from_str(&ctx, "<<= << <= <");
 		for zipped in solution.into_iter().zip(lexer) {
 			assert_eq!(zipped.0, zipped.1);
 		}
