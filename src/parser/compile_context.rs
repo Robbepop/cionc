@@ -1,6 +1,5 @@
 use std::cell::RefCell;
-use std::cell::RefMut;
-use parser::string_table::StringTable;
+use parser::string_cache::StringCache;
 
 // This type is the root to manage several subcomponents.
 // In later revisions it has a StringTable, a SymbolTable, an ErrorHandler and more
@@ -11,11 +10,5 @@ use parser::string_table::StringTable;
 
 #[derive(Default)]
 pub struct CompileContext {
-	string_table: RefCell<StringTable>
-}
-
-impl CompileContext {
-	pub fn get_string_table<'ctx>(&'ctx self) -> RefMut<'ctx, StringTable> {
-		self.string_table.borrow_mut()
-	}
+	pub string_cache: RefCell<StringCache>
 }

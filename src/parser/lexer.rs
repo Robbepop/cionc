@@ -1,5 +1,4 @@
 use std::str::Chars;
-use std::rc::Rc;
 use std::collections::VecDeque;
 
 use util::is_any_of::*;
@@ -7,6 +6,7 @@ use parser::util::char_util::CharProperties;
 use parser::token::*;
 use parser::token_stream::TokenStream;
 use parser::compile_context::CompileContext;
+use parser::string_cache::Name;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 //
@@ -83,15 +83,6 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		(self.peeked[0], self.peeked[1])
 	}
 
-	fn peek_3(&mut self) -> (char, char, char) {
-		use std::cmp;
-		let pulls_required = cmp::max(0, (3 - (self.peeked.len() as isize)));
-		for _ in 0..pulls_required {
-			self.pull();
-		}
-		(self.peeked[0], self.peeked[1], self.peeked[2])
-	}
-
 	/// Returns the given token, used as helper method
 	/// for method chaining in order to improve the code-flow
 	/// May be more important in future versions for managing
@@ -110,8 +101,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	/// Drains the content of this buffer by performing
 	/// a trial insertion at the context's StringTable.
 	/// This buffer is empty after this operation!
-	fn drain_buffer(&mut self) -> Rc<String> {
-		let rc = self.context.get_string_table().get_or_insert(&self.buffer);
+	fn drain_buffer(&mut self) -> Name {
+		let rc = self.context.string_cache.borrow_mut().intern(&self.buffer);
 		self.clear_buffer();
 		rc
 	}
@@ -571,6 +562,7 @@ mod tests {
 	use parser::lexer::*;
 	use parser::token::*;
 	use parser::compile_context::CompileContext;
+	use parser::token_stream::TokenStream;
 
 	#[test]
 	fn simple_tokens() {
@@ -629,59 +621,46 @@ mod tests {
 
 	#[test]
 	fn simple_char_literal() {
-		use parser::token::Token::*;
-		let solution = vec![
-			Token::char_literal_from_str(r"'c'"),
-			Whitespace,
-			Token::char_literal_from_str(r"'\n'"),
-			Whitespace,
-			Token::char_literal_from_str(r"'\t'"),
-			Whitespace,
-			Token::char_literal_from_str(r"'\x7F'"),
-			Whitespace,
-			Token::char_literal_from_str(r"'a's"),
-			Whitespace,
-			Token::char_literal_from_str(r"'\n'asd0")
-		];
+		use parser::token::Token::{Whitespace, Literal, EndOfFile};
+		use parser::token::LiteralToken::Char;
 		let ctx   = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx, r"'c' '\n' '\t' '\x7F' 'a's '\n'asd0");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let mut lexer = Lexer::new_from_str(
+			&ctx, r"'c' '\n' '\t' '\x7F' 'a's '\n'asd0");
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'c'"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'\n'"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'\t'"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'\x7F'"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'a's"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Char(sc.borrow_mut().intern(r"'\n'asd0"))));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]
 	fn simple_whitespace() {
-		let solution = vec![Token::Whitespace];
 		let ctx   = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx, " \t\r\n");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let mut lexer = Lexer::new_from_str(&ctx, " \t\r\n");
+		assert_eq!(lexer.next_token(), Token::Whitespace);
+		assert_eq!(lexer.next_token(), Token::EndOfFile);
 	}
 
 	#[test]
 	fn simple_integral_literals() {
 		use parser::token::Token::*;
-		let solution = vec![
-			Token::integer_literal_from_str("0b1011_0010_0000_0001"),
-			Whitespace,
-			Token::integer_literal_from_str("0o731_312_645_003"),
-			Whitespace,
-			Token::integer_literal_from_str("0xFF_AE_03_95"),
-			Whitespace,
-			Token::integer_literal_from_str("987654321"),
-			Whitespace,
-			Error,
-			Whitespace,
-			Error,
-			Whitespace,
-			Error,
-			Whitespace,
-			Token::integer_literal_from_str("0__")
-		];
+		use parser::token::LiteralToken::Integer;
 		let ctx   = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx,
+		let mut lexer = Lexer::new_from_str(&ctx,
 			"0b1011_0010_0000_0001
 			 0o731_312_645_003
 			 0xFF_AE_03_95
@@ -690,121 +669,155 @@ mod tests {
 			 0o___
 			 0x_____
 			 0__");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0b1011_0010_0000_0001"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0o731_312_645_003"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0xFF_AE_03_95"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("987654321"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(), Error);
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(), Error);
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(), Error);
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0__"))));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]
 	fn simple_integral_suffixes() {
 		use parser::token::Token::*;
-		let solution = vec![
-			Token::integer_literal_from_str("0b0000__0101__1111_0001'i32"),
-			Whitespace,
-			Token::integer_literal_from_str("0o123_456_777_000'u64"),
-			Whitespace,
-			Token::integer_literal_from_str("0xFA_01_DE_23'f32"),
-			Whitespace,
-			Token::integer_literal_from_str("1234567890'hello_word")
-		];
+		use parser::token::LiteralToken::Integer;
 		let ctx = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx,
+		let mut lexer = Lexer::new_from_str(&ctx,
 			"0b0000__0101__1111_0001'i32
 			 0o123_456_777_000'u64
 			 0xFA_01_DE_23'f32
 			 1234567890'hello_word"
 		);
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0b0000__0101__1111_0001'i32"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0o123_456_777_000'u64"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("0xFA_01_DE_23'f32"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Integer(sc.borrow_mut().intern("1234567890'hello_word"))));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]
 	fn simple_float_literals() {
-		let solution = vec![
-			Token::float_literal_from_str("0.0"),
-			Token::Whitespace,
-			Token::float_literal_from_str("42.0"),
-			Token::Whitespace,
-			Token::float_literal_from_str("0.24"),
-			Token::Whitespace,
-			Token::float_literal_from_str("13.37"),
-			Token::Whitespace,
-			Token::float_literal_from_str("0.00001"),
-			Token::Whitespace,
-			Token::float_literal_from_str("1.23e+12"),
-			Token::Whitespace,
-			Token::float_literal_from_str("0.01e+07"),
-			Token::Whitespace,
-			Token::float_literal_from_str("1_.1_"),
-			Token::EndOfFile
-		];
+		use parser::token::Token::*;
+		use parser::token::LiteralToken::Float;
 		let ctx = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx,
+		let mut lexer = Lexer::new_from_str(&ctx,
 			"0.0
 			 42.0
 			 0.24
 			 13.37
-			 0.00001
+			 0.00_00_1
 			 1.23e+12
-			 0.01e+07
+			 0.01e-07
 			 1_.1_");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("0.0"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("42.0"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("0.24"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("13.37"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("0.00_00_1"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("1.23e+12"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("0.01e-07"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("1_.1_"))));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]
 	fn simple_float_suffixes() {
 		use parser::token::Token::*;
-		let solution = vec![
-			Token::float_literal_from_str("0.0'f32"),
-			Whitespace,
-			Token::float_literal_from_str("567.0'i32"),
-			Whitespace,
-			Token::float_literal_from_str("9.9999'f64"),
-			Whitespace,
-			Token::float_literal_from_str("123.321e+14'alpha"),
-			Whitespace,
-			Token::float_literal_from_str("9.87654321e-0'b37a")
-		];
+		use parser::token::LiteralToken::Float;
 		let ctx = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx,
+		let mut lexer = Lexer::new_from_str(&ctx,
 			"0.0'f32
 			 567.0'i32
 			 9.9999'f64
-			 123.321e+14'alpha
+			 1_2_3.3_2_1e+14'alpha
 			 9.87654321e-0'b37a");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("0.0'f32"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("567.0'i32"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("9.9999'f64"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("1_2_3.3_2_1e+14'alpha"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Literal(Float(sc.borrow_mut().intern("9.87654321e-0'b37a"))));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]
 	fn simple_identifiers() {
-		let solution = vec![
-			Token::identifier_from_str("true"),
-			Token::Whitespace,
-			Token::identifier_from_str("false"),
-			Token::Whitespace,
-			Token::identifier_from_str("alphanumeric"),
-			Token::Whitespace,
-			Token::identifier_from_str("with_underscore"),
-			Token::Whitespace,
-			Token::identifier_from_str("underscores_at_the_end__"),
-			Token::Whitespace,
-			Token::identifier_from_str("with_n0m3r5")
-		];
+		use parser::token::Token::*;
 		let ctx = CompileContext::default();
-		let lexer = Lexer::new_from_str(&ctx,
+		let mut lexer = Lexer::new_from_str(&ctx,
 			"true false
 			 alphanumeric
 			 with_underscore
 			 underscores_at_the_end__
 			 with_n0m3r5");
-		for zipped in solution.into_iter().zip(lexer) {
-			assert_eq!(zipped.0, zipped.1);
-		}
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("true")));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("false")));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("alphanumeric")));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("with_underscore")));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("underscores_at_the_end__")));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(),
+			Identifier(sc.borrow_mut().intern("with_n0m3r5")));
+		assert_eq!(lexer.next_token(), EndOfFile);
 	}
 
 	#[test]

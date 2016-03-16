@@ -7,6 +7,8 @@
 
 use std::rc::Rc;
 
+use parser::string_cache::Name;
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
     Plus,    // +
@@ -46,11 +48,11 @@ pub enum DelimitToken {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LiteralToken {
-    Bool(Rc<String>),    // e.g. true or false
-    Char(Rc<String>),    // e.g. 'a'
-    Integer(Rc<String>), // e.g. 5, 42, 1337, 0
-    Float(Rc<String>),   // e.g. 0.1, 5.0, 13.37, 0.0
-    String(Rc<String>)   // e.g. "Hello, World!"
+    Bool(Name),    // e.g. true or false
+    Char(Name),    // e.g. 'a'
+    Integer(Name), // e.g. 5, 42, 1337, 0
+    Float(Name),   // e.g. 0.1, 5.0, 13.37, 0.0
+    String(Name)   // e.g. "Hello, World!"
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -71,7 +73,7 @@ pub enum Token {
     CloseDelim(DelimitToken),
 
     /* Identifiers with their given name */
-    Identifier(Rc<String>),
+    Identifier(Name),
     /* Literal token, e.g. an integer, float or string literal */
     Literal(LiteralToken),
 
@@ -100,33 +102,4 @@ pub enum Token {
     /* Token indicating that an errornous sequence has been found */
     Error,
     ErrStr(Rc<String>) // just for debug purpose
-}
-
-use parser::token::Token::{Identifier, Literal};
-use parser::token::LiteralToken::{Char, Bool, Integer, Float};
-
-impl Token {
-    pub fn bool_literal_from_str(slice: &str) -> Token {
-        Literal(Bool(Rc::new(String::from(slice))))
-    }
-
-    pub fn char_literal_from_str(slice: &str) -> Token {
-        Literal(Char(Rc::new(slice.to_owned().to_string())))
-    }
-
-    pub fn integer_literal_from_str(slice: &str) -> Token {
-        Literal(Integer(Rc::new(String::from(slice))))
-    }
-
-    pub fn float_literal_from_str(slice: &str) -> Token {
-        Literal(Float(Rc::new(String::from(slice))))
-    }
-
-    pub fn string_literal_from_str(slice: &str) -> Token {
-        Literal(LiteralToken::String(Rc::new(slice.to_owned().to_string())))
-    }
-
-    pub fn identifier_from_str(slice: &str) -> Token {
-        Identifier(Rc::new(String::from(slice)))
-    }
 }
