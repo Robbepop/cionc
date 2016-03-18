@@ -48,11 +48,12 @@ pub enum DelimitToken {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LiteralToken {
-    Bool(Name),    // e.g. true or false
-    Char(Name),    // e.g. 'a'
-    Integer(Name), // e.g. 5, 42, 1337, 0
-    Float(Name),   // e.g. 0.1, 5.0, 13.37, 0.0
-    String(Name)   // e.g. "Hello, World!"
+    // Byte(Name),      // e.g. b'a'
+    Char(Name),      // e.g. 'a'
+    Integer(Name),   // e.g. 5, 42, 1337, 0
+    Float(Name),     // e.g. 0.1, 5.0, 13.37, 0.0
+    String(Name),    // e.g. "Hello, World!"
+    // RawString(Name), // e.g. r#"Hello, World!"#
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

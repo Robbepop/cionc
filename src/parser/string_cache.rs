@@ -45,7 +45,7 @@ impl fmt::Display for RcBoxStr {
 
 impl Borrow<str> for RcBoxStr {
     fn borrow(&self) -> &str {
-        &self.string[..]
+        self
     }
 }
 

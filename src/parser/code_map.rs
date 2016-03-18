@@ -72,7 +72,6 @@ struct Source {
 	/// The content of the source file. This is an immutable String
 	/// that is initialized on construction of a Source.
 	pub content: Rc<String>,
-	let c = "hello"°s
 
 	/// This is the character (or byte) range that is acceptable for
 	/// for this Source to access its internal content.
@@ -91,10 +90,6 @@ impl Source {
 	// fn new(global_offset: BytePos, file_name: String, content: String) -> Source {
 		// TODO		
 	// }
-	let x = 5.45e-12'u32;
-	let y = 42'i64;
-	let z = '\0'u8;
-	let a = "Hello, World!"s;
 	fn content_from_range(&self, byte_range: ByteRange) -> String {
 		let off = self.range.begin;
 		self.content[

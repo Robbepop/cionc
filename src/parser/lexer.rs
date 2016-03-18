@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use util::is_any_of::*;
 use parser::util::char_util::CharProperties;
 use parser::token::*;
-use parser::token_stream::TokenStream;
 use parser::compile_context::CompileContext;
 use parser::string_cache::Name;
 
@@ -102,9 +101,9 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	/// a trial insertion at the context's StringTable.
 	/// This buffer is empty after this operation!
 	fn drain_buffer(&mut self) -> Name {
-		let rc = self.context.string_cache.borrow_mut().intern(&self.buffer);
+		let name = self.context.string_cache.borrow_mut().intern(&self.buffer);
 		self.clear_buffer();
-		rc
+		name
 	}
 
 	fn scan_line_comment(&mut self) -> Token {
@@ -278,8 +277,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_binary_literal(&mut self) -> Token {
 		assert_eq!(self.peek(), 'b');
 		self.consume();
-		if self.is_followed_by_min(1, |c| c.is_binary_numeral(), |c| c == '_') {
-			self.take_while(|c| c.is_binary_numeral() || c == '_');
+		if 1 <= self.count_follow_by(|c| c.is_binary_numeral(), |c| c == '_') {
 			self.scan_integer_suffix()
 		}
 		else {
@@ -290,8 +288,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_octal_literal(&mut self) -> Token {
 		assert_eq!(self.peek(), 'o');
 		self.consume();
-		if self.is_followed_by_min(1, |c| c.is_octal_numeral(), |c| c == '_') {
-			self.take_while(|c| c.is_octal_numeral() || c == '_');
+		if 1 <= self.count_follow_by(|c| c.is_octal_numeral(), |c| c == '_') {
 			self.scan_integer_suffix()
 		}
 		else {
@@ -302,8 +299,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	fn scan_hexdec_literal(&mut self) -> Token {
 		assert_eq!(self.peek(), 'x');
 		self.consume();
-		if self.is_followed_by_min(1, |c| c.is_hexdec_numeral(), |c| c == '_') {
-			self.take_while(|c| c.is_hexdec_numeral() || c == '_');
+		if 1 <= self.count_follow_by(|c| c.is_hexdec_numeral(), |c| c == '_') {
 			self.scan_integer_suffix()
 		}
 		else {
@@ -315,10 +311,8 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		assert!(self.peek().is_decimal_numeral() || self.peek() == '_');
 		self.take_while(|c| c.is_decimal_numeral() || c == '_');
 		match self.peek() {
-			'.' => self.scan_float_literal(),
-			_ => {
-				self.scan_integer_suffix()
-			}
+			'.' => self.scan_possible_float_literal(),
+			_ => self.scan_integer_suffix()
 		}
 	}
 
@@ -343,13 +337,28 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 	}
 
 	fn scan_float_literal(&mut self) -> Token {
+		let ( p, c ) = self.peek_2();
+		assert!(p == '.' && c.is_decimal_numeral());
+		self.consume_n(2);
+		self.take_while(|c| c.is_decimal_numeral() || c == '_');
+		self.scan_float_literal_exponent()
+	}
+
+	/// Be careful, a '.' following a sequence of digits doesn't
+	/// nessecarily mean that the following characters are part of
+	/// a Float literal.
+	/// E.g. a method call on an integer literal may be possible, too:
+	///    42.foo()
+	/// Or a range expression:
+	///    0..10
+	fn scan_possible_float_literal(&mut self) -> Token {
 		assert_eq!(self.peek(), '.');
-		if self.consume().peek().is_decimal_numeral() {
-			self.take_while(|c| c.is_decimal_numeral() || c == '_');
-			self.scan_float_literal_exponent()
-		}
-		else {
-			self.make(Token::Error)
+		match self.peek_2() {
+			('.',  c ) if c.is_decimal_numeral() => self.scan_float_literal(),
+			_ => {
+				let drained = self.drain_buffer();
+				self.make(Token::Literal(LiteralToken::Integer(drained)))
+			}
 		}
 	}
 
@@ -370,13 +379,11 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 			},
 
 			/* decimal number literal */
-			'1' ... '9' => self.scan_decimal_literal(),
-
-			_ => unreachable!()
+			_ => self.scan_decimal_literal(),
 		}
 	}
 
-	fn is_followed_by_min<C, U>(&mut self, n: usize, pred_counted: C, pred_uncounted: U) -> bool
+	fn count_follow_by<C, U>(&mut self, pred_counted: C, pred_uncounted: U) -> usize
 		where C: Fn(char) -> bool,
 		      U: Fn(char) -> bool
 	{
@@ -393,7 +400,7 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 				break;
 			}
 		}
-		count_valid >= n
+		count_valid
 	}
 
 	/// Take all characters from input as long as they fullfill the given predicate
@@ -406,6 +413,14 @@ impl<'input, 'ctx> Lexer<'input, 'ctx> {
 		}
 		self
 	}
+}
+
+// Types like the Lexer implement this trait as they are iterators
+// over Tokens. Maybe it should be substituted simply with the Iterator<Token> trait.
+// However, a next_token(...) method is more explicit than just next(...) and 
+// it allows one to add new required methods (e.g. peek_token(...)) in future versions.
+pub trait TokenStream {
+    fn next_token(&mut self) -> Token;
 }
 
 impl<'input, 'ctx> TokenStream for Lexer<'input, 'ctx> {
@@ -562,7 +577,6 @@ mod tests {
 	use parser::lexer::*;
 	use parser::token::*;
 	use parser::compile_context::CompileContext;
-	use parser::token_stream::TokenStream;
 
 	#[test]
 	fn simple_tokens() {
