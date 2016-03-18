@@ -854,4 +854,28 @@ mod tests {
 			assert_eq!(zipped.0, zipped.1);
 		}
 	}
+
+	#[test]
+	fn dot_after_number_sequence() {
+		use parser::token::Token::*;
+		use parser::token::LiteralToken::{Integer};
+		use parser::token::DelimitToken::*;
+		let ctx = CompileContext::default();
+		let mut lexer = Lexer::new_from_str(&ctx, "42.foo() 5..10 1.e12");
+		let sc = &ctx.string_cache;
+		assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("42"))));
+		assert_eq!(lexer.next_token(), Dot);
+		assert_eq!(lexer.next_token(), Identifier(sc.borrow_mut().intern("foo")));
+		assert_eq!(lexer.next_token(), OpenDelim(Paren));
+		assert_eq!(lexer.next_token(), CloseDelim(Paren));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("5"))));
+		assert_eq!(lexer.next_token(), DotDot);
+		assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("10"))));
+		assert_eq!(lexer.next_token(), Whitespace);
+		assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("1"))));
+		assert_eq!(lexer.next_token(), Dot);
+		assert_eq!(lexer.next_token(), Identifier(sc.borrow_mut().intern("e12")));
+		assert_eq!(lexer.next_token(), EndOfFile);
+	}
 }
