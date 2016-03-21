@@ -399,7 +399,7 @@ impl CodeMap {
 
 	fn load_file(&self, path: &Path) -> io::Result<FileMap> {
 		let src = try!(self.file_loader.read_file(path));
-		Ok(self.into_filemap(path.to_str().unwrap().to_string(), src))
+		Ok(self.new_filemap_from(path.to_str().unwrap().to_string(), src))
 	}
 
 	fn next_start_pos(&self) -> BytePos {
@@ -409,7 +409,7 @@ impl CodeMap {
 		}
 	}
 
-	fn into_filemap(&self, filename: String, mut src: String) -> FileMap {
+	fn new_filemap_from(&self, filename: String, mut src: String) -> FileMap {
 		// Remove utf-8 Byte Order Mark (BOM)
 		if src.starts_with("\u{FEFF}") {
 			src.drain(..3);
@@ -420,8 +420,37 @@ impl CodeMap {
 		filemap
 	}
 
-	fn new_filemap(&self, filename: &str, mut src: &str) -> FileMap {
-		self.into_filemap(filename.to_owned(), src.to_owned())
+	fn new_filemap(&self, filename: &str, src: &str) -> FileMap {
+		self.new_filemap_from(filename.to_owned(), src.to_owned())
+	}
+
+	fn enclosing_span(&self) -> Span {
+		let files = self.files.borrow();
+		if files.is_empty() {
+			Span::default()
+		}
+		else {
+			Span::new(
+				files.first().unwrap().span.lo,
+				files.last().unwrap().span.hi
+			)
+		}
+	}
+
+	fn contains_pos(&self, byte_pos: BytePos) -> bool {
+		self.enclosing_span().contains_pos(byte_pos)
+	}
+
+	fn lookup_filemap(&self, byte_pos: BytePos) -> FileMap {
+		use std::cmp::Ordering;
+		let idx = self.files.borrow().binary_search_by(
+			|fm| {
+				if      byte_pos < fm.span.lo { Ordering::Greater }
+				else if byte_pos > fm.span.hi { Ordering::Less }
+				else                          { Ordering::Equal }
+			}
+		).unwrap();
+		self.files.borrow()[idx].clone()
 	}
 }
 
@@ -494,5 +523,19 @@ mod tests {
 		assert_eq!(fm2.line_starts.borrow()[2], BytePos::from(20));
 		assert_eq!(fm2.line_starts.borrow()[3], BytePos::from(21));
 		assert_eq!(fm2.multibyte_chars.borrow().len(), 0);
+		let fm3 = cm.lookup_filemap(BytePos::from(0));
+		let fm4 = cm.lookup_filemap(BytePos::from(15));
+		let fm5 = cm.lookup_filemap(BytePos::from(16));
+		let fm6 = cm.lookup_filemap(BytePos::from(22));
+		assert_eq!(fm3.name, fm1.name);
+		assert_eq!(fm4.name, fm1.name);
+		assert_eq!(fm5.name, fm2.name);
+		assert_eq!(fm6.name, fm2.name);
+		assert_eq!(cm.contains_pos(BytePos::from(0)), true);
+		assert_eq!(cm.contains_pos(BytePos::from(8)), true);
+		assert_eq!(cm.contains_pos(BytePos::from(16)), true);
+		assert_eq!(cm.contains_pos(BytePos::from(22)), true);
+		assert_eq!(cm.contains_pos(BytePos::from(23)), false);
+		assert_eq!(cm.contains_pos(BytePos::from(100)), false);
 	}
 }
