@@ -174,7 +174,8 @@ impl FileMap {
 	)
 		-> FileMap
 	{
-		let end_pos = offset + BytePos::from(src.len());
+		use std::cmp::max;
+		let end_pos = offset + BytePos::from(max(0, src.len() - 1));
 		FileMap {
 			fm: Rc::new(FileMapData {
 				name: filename,
@@ -226,6 +227,9 @@ impl Iterator for FileMapIterator {
 	type Item = CharAndPos;
 
 	fn next(&mut self) -> Option<Self::Item> {
+		if !self.fm.span.contains_pos(self.cur_pos) {
+			return None;
+		}
 		match self.fm.char_at(self.cur_pos) {
 			Some(next_char) => {
 				let cur_pos = self.cur_pos;
@@ -272,7 +276,7 @@ pub struct FileMapData {
 
 impl FileMapData {
 	fn is_fully_initialized(&self) -> bool {
-		self.initialized_until.get() == self.span.hi - BytePos::one()
+		self.initialized_until.get() == self.span.hi
 	}
 
 	fn register_line(&self, byte_pos: BytePos, ch: char) {
@@ -307,8 +311,9 @@ impl FileMapData {
 	}
 
 	fn to_relative_offset(&self, byte_pos: BytePos) -> usize {
+		use std::cmp::max;
 		assert!(self.span.contains_pos(byte_pos));
-		(byte_pos - self.abs_offset()).to_usize()
+		max(0, (byte_pos - self.abs_offset()).to_usize())
 	}
 
 	/// Returns the nth character within this FileMap,
@@ -330,7 +335,7 @@ impl FileMapData {
 	fn str_from_span(&self, span: Span) -> &str {
 		assert!(self.span.contains(span));
 		let rel_lo = self.to_relative_offset(span.lo);
-		let rel_hi = self.to_relative_offset(span.hi);
+		let rel_hi = self.to_relative_offset(span.hi) + 1;
 		&self.src[rel_lo .. rel_hi]
 	}
 }
@@ -457,16 +462,18 @@ mod tests {
 		assert_eq!(fm2.line_starts.borrow().len(), 0);
 		assert_eq!(fm1.name, "fm1");
 		assert_eq!(fm2.name, "fm2");
-		assert_eq!(fm1.span, Span::from_usize( 0, 16));
-		assert_eq!(fm2.span, Span::from_usize(17, 24));
+		assert_eq!(fm1.span, Span::from_usize( 0, 15));
+		assert_eq!(fm2.span, Span::from_usize(16, 22));
 		assert_eq!(fm1.abs_offset(), BytePos::from(0));
-		assert_eq!(fm2.abs_offset(), BytePos::from(17));
+		assert_eq!(fm2.abs_offset(), BytePos::from(16));
 		check_iterator(&mut fmit1, &[
 			('f', 0), ('o', 1), ('o', 2), ('\n', 3),
 			('b', 4), ('a', 5), ('r', 6), (' ', 7), ('b', 8), ('a', 9), ('z', 10), ('\n', 11),
 			('\n', 12),
 			('e', 13), ('n', 14), ('d', 15)
 		]);
+		assert_eq!(fm1.str_from_span(Span::from_usize(0, 2)), "foo");
+		assert_eq!(fm1.str_from_span(fm1.span), "foo\nbar baz\n\nend");
 		assert_eq!(fm1.is_fully_initialized(), true);
 		assert_eq!(fm1.line_starts.borrow().len(), 3);
 		assert_eq!(fm1.line_starts.borrow()[0], BytePos::from(3));
@@ -474,18 +481,18 @@ mod tests {
 		assert_eq!(fm1.line_starts.borrow()[2], BytePos::from(12));
 		assert_eq!(fm1.multibyte_chars.borrow().len(), 0);
 		check_iterator(&mut fmit2, &[
-			('\t', 17), ('\n', 18),
-			('\n', 19),
-			('a', 20), ('\n', 21),
-			('\n', 22),
-			('b', 23)
+			('\t', 16), ('\n', 17),
+			('\n', 18),
+			('a', 19), ('\n', 20),
+			('\n', 21),
+			('b', 22)
 		]);
 		assert_eq!(fm2.is_fully_initialized(), true);
 		assert_eq!(fm2.line_starts.borrow().len(), 4);
-		assert_eq!(fm2.line_starts.borrow()[0], BytePos::from(1 + 17));
-		assert_eq!(fm2.line_starts.borrow()[1], BytePos::from(2 + 17));
-		assert_eq!(fm2.line_starts.borrow()[2], BytePos::from(4 + 17));
-		assert_eq!(fm2.line_starts.borrow()[3], BytePos::from(5 + 17));
+		assert_eq!(fm2.line_starts.borrow()[0], BytePos::from(17));
+		assert_eq!(fm2.line_starts.borrow()[1], BytePos::from(18));
+		assert_eq!(fm2.line_starts.borrow()[2], BytePos::from(20));
+		assert_eq!(fm2.line_starts.borrow()[3], BytePos::from(21));
 		assert_eq!(fm2.multibyte_chars.borrow().len(), 0);
 	}
 }
