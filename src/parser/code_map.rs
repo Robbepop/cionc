@@ -1,23 +1,35 @@
 use std::rc::Rc;
+use std::cell::Cell;
 use std::cell::RefCell;
 
 use std::ops::Add;
 use std::ops::Sub;
 
+use std::fmt;
 use std::io;
 use std::path::Path; // used by the FileLoader trait
+
+use std::ops::Deref;
 
 /// A byte offset.
 /// This is used as an index into FileMaps of the owning CodeMap.
 /// Keep this structure small (currently 32 bits)
 /// as the AST contains many of them!
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Default)]
-struct BytePos(pub u32);
+pub struct BytePos(pub u32);
 
 impl BytePos {
 	fn to_usize(&self) -> usize {
 		let BytePos(n) = *self;
 		n as usize
+	}
+
+	fn zero() -> BytePos {
+		BytePos::from(0)
+	}
+
+	fn one() -> BytePos {
+		BytePos::from(1)
 	}
 }
 
@@ -48,25 +60,27 @@ impl Add<BytePos> for BytePos {
 /// is not equivalent to a character offset.
 /// The CodeMap will convert instances of BytePos into
 /// instances of CharPos as necessary.
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, PartialOrd)]
-struct CharPos(pub usize);
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Default)]
+pub struct CharPos(pub usize);
 
 impl CharPos {
 	fn to_usize(&self) -> usize {
 		let CharPos(n) = *self;
 		n
 	}
+
+	fn zero() -> CharPos {
+		CharPos::from(0)
+	}
+
+	fn one() -> CharPos {
+		CharPos::from(1)
+	}
 }
 
 impl From<usize> for CharPos {
 	fn from(from: usize) -> Self {
 		CharPos(from as usize)
-	}
-}
-
-impl From<BytePos> for CharPos {
-	fn from(from: BytePos) -> Self {
-		CharPos::from(from.to_usize())
 	}
 }
 
@@ -87,10 +101,16 @@ impl Add<CharPos> for CharPos {
 }
 
 /// Represents a span of BytePos from lo (low) to hi (high).
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-struct Span {
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
+pub struct Span {
 	pub lo: BytePos,
 	pub hi: BytePos
+}
+
+impl fmt::Debug for Span {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Span {{ lo: {:?}, hi: {:?} }}", self.lo, self.hi)
+	}
 }
 
 impl Span {
@@ -104,6 +124,10 @@ impl Span {
 
 	pub fn contains(self, other: Span) -> bool {
 		self.lo <= other.lo && other.hi <= self.hi
+	}
+
+	pub fn contains_pos(self, byte_pos: BytePos) -> bool {
+		self.lo <= byte_pos && byte_pos <= self.hi
 	}
 
 	pub fn overlaps_with(self, other: Span) -> bool {
@@ -124,12 +148,101 @@ impl Span {
 	}
 }
 
+/// Identifies an offset of a multi-byte character in a FileMap
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct MultiByteChar {
+    /// The absolute offset of the character in the CodeMap
+    pub pos: BytePos,
+    /// The number of bytes, >=2
+    pub bytes: usize,
+}
+
+/// FileMap wraps FileMapData as a convenience wrapper and to disallow
+/// cloning FileMapData deeply which is never needed and a very costly operation.
+/// Wrapping FileMapData opens windows for creating Iterators
+/// over the inner FileMapData's src String.
+#[derive(Clone)]
+pub struct FileMap {
+	fm: Rc<FileMapData>
+}
+
+impl FileMap {
+	fn new(
+		filename: String,
+		src: String,
+		offset: BytePos
+	)
+		-> FileMap
+	{
+		let end_pos = offset + BytePos::from(src.len());
+		FileMap {
+			fm: Rc::new(FileMapData {
+				name: filename,
+				src: Rc::new(src),
+				span: Span::new(offset, end_pos),
+				line_starts: RefCell::new(Vec::new()),
+				multibyte_chars: RefCell::new(Vec::new()),
+				initialized_until: Cell::new(offset)
+			})
+		}
+	}
+
+	pub fn iter(&self) -> FileMapIterator {
+		FileMapIterator { fm: self.fm.clone(), cur_pos: self.fm.abs_offset() }
+	}
+}
+
+impl Deref for FileMap {
+	type Target = FileMapData;
+
+	fn deref(&self) -> &Self::Target {
+		&*(self.fm)
+	}
+}
+
+/// FileMap can create FileMapIterator that iterates over all chars in its source.
+/// Iterating the first time over a FileMap also initializes its line_starts
+/// and multibyte_chars vectors.
+pub struct FileMapIterator {
+	fm: Rc<FileMapData>,
+	cur_pos: BytePos
+}
+
+impl FileMapIterator {
+	fn advance_cur_pos(&mut self, steps: usize) {
+		self.cur_pos = self.cur_pos + BytePos::from(steps);
+	}
+}
+
+/// FileMapIterator returns pairs of char and BytePos
+/// wrapped in this struct for better readability.
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub struct CharAndPos {
+	pub ch: char,
+	pub pos: BytePos
+}
+
+impl Iterator for FileMapIterator {
+	type Item = CharAndPos;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		match self.fm.char_at(self.cur_pos) {
+			Some(next_char) => {
+				let cur_pos = self.cur_pos;
+				self.advance_cur_pos(char::len_utf8(next_char));
+				Some(CharAndPos { ch: next_char, pos: cur_pos })
+			},
+			None => None
+		}
+	}
+}
+
 /// This class represents a source file.
 /// It stores and owns its name and content.
 /// Besides that it specifies a disjoint range of bytes 
 /// to allow indexing into its contents
 /// with the help of the SourceRange.
-struct FileMap {
+pub struct FileMapData {
 	/// The name of this Source, by default this is the file name
 	pub name: String,
 
@@ -141,21 +254,84 @@ struct FileMap {
 	/// for this Source to access its internal content.
 	/// Source's partition the global range of bytes into disjoint chunks
 	/// of byte ranges.
-	span: Span,
+	pub span: Span,
 
-	/// This is initialized upon construction of a Source
+	/// This is initialized upon first iteration of a FileMap
 	/// and later used to speed-up construction of SourceLoc data
 	/// that shows line and column count to the user (programmer)
 	/// on error handling info text.
-	line_starts: RefCell<Vec<BytePos>>
+	line_starts: RefCell<Vec<BytePos>>,
+
+    /// Locations of multi-byte characters in the source code.
+	multibyte_chars: RefCell<Vec<MultiByteChar>>,
+
+	/// The position within the FileMapData's source up to its
+	/// line_starts and multibyte_chars are initialized.
+	initialized_until: Cell<BytePos>
 }
 
-impl FileMap {
-	fn content_from_span(&self, span: Span) -> String {
-		let off = self.span.lo;
-		self.src[
-			(span.lo - off).to_usize() .. (span.hi - off).to_usize()
-		].to_string()
+impl FileMapData {
+	fn is_fully_initialized(&self) -> bool {
+		self.initialized_until.get() == self.span.hi - BytePos::one()
+	}
+
+	fn register_line(&self, byte_pos: BytePos, ch: char) {
+		if ch == '\n' {
+			self.line_starts.borrow_mut().push(byte_pos);
+		}
+	}
+
+	fn register_multibyte(&self, byte_pos: BytePos, ch: char) {
+		let count_bytes = ch.len_utf8();
+		if count_bytes >= 2 {
+			self.multibyte_chars.borrow_mut().push(
+				MultiByteChar {
+					pos: byte_pos,
+					bytes: count_bytes
+				}
+			);
+		}
+	}
+
+	fn register_line_and_multibyte(&self, byte_pos: BytePos, ch: char) {
+		// do not initialize twice!
+		if self.initialized_until.get() < byte_pos {
+			self.register_line(byte_pos, ch);
+			self.register_multibyte(byte_pos, ch);
+			self.initialized_until.set(byte_pos + BytePos::from(ch.len_utf8()) - BytePos::one());
+		}
+	}
+
+	fn abs_offset(&self) -> BytePos {
+		self.span.lo
+	}
+
+	fn to_relative_offset(&self, byte_pos: BytePos) -> usize {
+		assert!(self.span.contains_pos(byte_pos));
+		(byte_pos - self.abs_offset()).to_usize()
+	}
+
+	/// Returns the nth character within this FileMap,
+	/// given that the byte_pos is a correct unicode scalar code point.
+	/// This method should only be called from FileMapIterator
+	/// to ensure above assertion.
+	fn char_at(&self, byte_pos: BytePos) -> Option<char> {
+		let slice = self.src.as_str();
+		let off   = self.to_relative_offset(byte_pos);
+		match slice[off..].chars().next() {
+			Some(next_char) => {
+				self.register_line_and_multibyte(byte_pos, next_char);
+				Some(next_char)
+			},
+			None => None
+		}
+	}
+
+	fn str_from_span(&self, span: Span) -> &str {
+		assert!(self.span.contains(span));
+		let rel_lo = self.to_relative_offset(span.lo);
+		let rel_hi = self.to_relative_offset(span.hi);
+		&self.src[rel_lo .. rel_hi]
 	}
 }
 
@@ -191,8 +367,8 @@ impl FileLoader for ConcreteFileLoader {
 /// This is the managing unit of all Source files within the program.
 /// It is used as a builder for new Sources and manages their disjoint
 /// byte ranges in order to index into their contents more easily.
-struct CodeMap {
-	pub files: RefCell<Vec<Rc<FileMap>>>,
+pub struct CodeMap {
+	pub files: RefCell<Vec<FileMap>>,
 	file_loader: Box<FileLoader>
 }
 
@@ -216,43 +392,100 @@ impl CodeMap {
 		self.file_loader.file_exists(path)
 	}
 
-	fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
+	fn load_file(&self, path: &Path) -> io::Result<FileMap> {
 		let src = try!(self.file_loader.read_file(path));
-		Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
+		Ok(self.into_filemap(path.to_str().unwrap().to_string(), src))
 	}
 
-	fn next_start_pos(&self) -> usize {
+	fn next_start_pos(&self) -> BytePos {
 		match self.files.borrow().last() {
-			None => 0,
-			// Add one so there is some space between files.
-			// This lets us distinguish positions in the codemap,
-			// even in the presence of zero-length files.
-			Some(last) => last.span.hi.to_usize() + 1
+			None => BytePos::zero(),
+			Some(last) => last.span.hi + BytePos::one()
 		}
 	}
 
-	fn new_filemap(&self, filename: String, mut src: String) -> Rc<FileMap> {
+	fn into_filemap(&self, filename: String, mut src: String) -> FileMap {
 		// Remove utf-8 Byte Order Mark (BOM)
 		if src.starts_with("\u{FEFF}") {
 			src.drain(..3);
 		}
 		let start_pos = self.next_start_pos();
-		let end_pos   = start_pos + src.len();
-		let filemap   = Rc::new(FileMap {
-			name: filename,
-			src: Rc::new(src),
-			span: Span::from_usize(start_pos, end_pos),
-			line_starts: RefCell::new(Vec::new())
-		});
+		let filemap = FileMap::new(filename, src, start_pos);
 		self.files.borrow_mut().push(filemap.clone());
 		filemap
+	}
+
+	fn new_filemap(&self, filename: &str, mut src: &str) -> FileMap {
+		self.into_filemap(filename.to_owned(), src.to_owned())
 	}
 }
 
 /// This is only used for error handling to provide better and more
 /// useful information to the user on a warning or error information.
 struct Loc {
-	pub source: Rc<FileMap>,
+	pub source: FileMap,
 	pub line: usize, // the 1-based line number within the source
 	pub col: CharPos // the 0-based col'th character within the given line
+}
+
+
+
+mod tests {
+	use super::*;
+
+	fn check_iterator(
+		fmit: &mut FileMapIterator,
+		check_against: &[(char, usize)])
+	{
+		for &(ch, pos) in check_against {
+			let cap = CharAndPos { ch: ch, pos: BytePos::from(pos) };
+			assert_eq!(fmit.next().unwrap(), cap);
+		}
+		assert_eq!(fmit.next(), None);
+	}
+
+	#[test]
+	fn t1() {
+		let cm = CodeMap::new();
+		let fm1 = cm.new_filemap("fm1", "foo\nbar baz\n\nend");
+		let fm2 = cm.new_filemap("fm2", "\t\n\na\n\nb");
+		let mut fmit1 = fm1.iter();
+		let mut fmit2 = fm2.iter();
+		assert_eq!(fm1.is_fully_initialized(), false);
+		assert_eq!(fm2.is_fully_initialized(), false);
+		assert_eq!(fm1.line_starts.borrow().len(), 0);
+		assert_eq!(fm2.line_starts.borrow().len(), 0);
+		assert_eq!(fm1.name, "fm1");
+		assert_eq!(fm2.name, "fm2");
+		assert_eq!(fm1.span, Span::from_usize( 0, 16));
+		assert_eq!(fm2.span, Span::from_usize(17, 24));
+		assert_eq!(fm1.abs_offset(), BytePos::from(0));
+		assert_eq!(fm2.abs_offset(), BytePos::from(17));
+		check_iterator(&mut fmit1, &[
+			('f', 0), ('o', 1), ('o', 2), ('\n', 3),
+			('b', 4), ('a', 5), ('r', 6), (' ', 7), ('b', 8), ('a', 9), ('z', 10), ('\n', 11),
+			('\n', 12),
+			('e', 13), ('n', 14), ('d', 15)
+		]);
+		assert_eq!(fm1.is_fully_initialized(), true);
+		assert_eq!(fm1.line_starts.borrow().len(), 3);
+		assert_eq!(fm1.line_starts.borrow()[0], BytePos::from(3));
+		assert_eq!(fm1.line_starts.borrow()[1], BytePos::from(11));
+		assert_eq!(fm1.line_starts.borrow()[2], BytePos::from(12));
+		assert_eq!(fm1.multibyte_chars.borrow().len(), 0);
+		check_iterator(&mut fmit2, &[
+			('\t', 17), ('\n', 18),
+			('\n', 19),
+			('a', 20), ('\n', 21),
+			('\n', 22),
+			('b', 23)
+		]);
+		assert_eq!(fm2.is_fully_initialized(), true);
+		assert_eq!(fm2.line_starts.borrow().len(), 4);
+		assert_eq!(fm2.line_starts.borrow()[0], BytePos::from(1 + 17));
+		assert_eq!(fm2.line_starts.borrow()[1], BytePos::from(2 + 17));
+		assert_eq!(fm2.line_starts.borrow()[2], BytePos::from(4 + 17));
+		assert_eq!(fm2.line_starts.borrow()[3], BytePos::from(5 + 17));
+		assert_eq!(fm2.multibyte_chars.borrow().len(), 0);
+	}
 }
