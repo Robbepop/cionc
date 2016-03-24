@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use parser::string_cache::StringCache;
+use parser::code_map::CodeMap;
 
 // This type is the root to manage several subcomponents.
 // In later revisions it has a StringTable, a SymbolTable, an ErrorHandler and more
@@ -10,5 +11,6 @@ use parser::string_cache::StringCache;
 
 #[derive(Default)]
 pub struct CompileContext {
-	pub string_cache: RefCell<StringCache>
+	pub string_cache: RefCell<StringCache>,
+	pub code_map: RefCell<CodeMap>
 }

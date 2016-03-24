@@ -31,6 +31,10 @@ impl BytePos {
 	fn one() -> BytePos {
 		BytePos::from(1)
 	}
+
+	fn advance(&mut self, n: usize) {
+		self.0 += n as u32;
+	}
 }
 
 impl From<usize> for BytePos {
@@ -209,12 +213,6 @@ pub struct FileMapIterator {
 	cur_pos: BytePos
 }
 
-impl FileMapIterator {
-	fn advance_cur_pos(&mut self, steps: usize) {
-		self.cur_pos = self.cur_pos + BytePos::from(steps);
-	}
-}
-
 /// FileMapIterator returns pairs of char and BytePos
 /// wrapped in this struct for better readability.
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
@@ -227,16 +225,14 @@ impl Iterator for FileMapIterator {
 	type Item = CharAndPos;
 
 	fn next(&mut self) -> Option<Self::Item> {
-		if !self.fm.span.contains_pos(self.cur_pos) {
-			return None;
-		}
+		if self.cur_pos > self.fm.span.hi { return None; }
 		match self.fm.char_at(self.cur_pos) {
 			Some(next_char) => {
-				let cur_pos = self.cur_pos;
-				self.advance_cur_pos(char::len_utf8(next_char));
-				Some(CharAndPos { ch: next_char, pos: cur_pos })
+				let cap = CharAndPos { ch: next_char, pos: self.cur_pos };
+				self.cur_pos.advance(char::len_utf8(next_char));
+				Some(cap)
 			},
-			None => None
+			None => unreachable!()
 		}
 	}
 }
@@ -275,16 +271,19 @@ pub struct FileMapData {
 }
 
 impl FileMapData {
+	/// Only for debug purpose
 	fn is_fully_initialized(&self) -> bool {
 		self.initialized_until.get() == self.span.hi
 	}
 
+	/// Should only be called from register_line_and_multibyte
 	fn register_line(&self, byte_pos: BytePos, ch: char) {
 		if ch == '\n' {
 			self.line_starts.borrow_mut().push(byte_pos);
 		}
 	}
 
+	/// Should only be called from register_line_and_multibyte
 	fn register_multibyte(&self, byte_pos: BytePos, ch: char) {
 		let count_bytes = ch.len_utf8();
 		if count_bytes >= 2 {
@@ -313,6 +312,7 @@ impl FileMapData {
 	fn to_relative_offset(&self, byte_pos: BytePos) -> usize {
 		use std::cmp::max;
 		assert!(self.span.contains_pos(byte_pos));
+		// TODO: with assertion above no max(..) needed
 		max(0, (byte_pos - self.abs_offset()).to_usize())
 	}
 
@@ -377,14 +377,16 @@ pub struct CodeMap {
 	file_loader: Box<FileLoader>
 }
 
-impl CodeMap {
-	pub fn new() -> CodeMap {
+impl Default for CodeMap {
+	fn default() -> Self {
 		CodeMap {
 			files: RefCell::new(Vec::new()),
 			file_loader: Box::new(ConcreteFileLoader)
 		}
 	}
+}
 
+impl CodeMap {
 	pub fn new_with_file_loader(file_loader: Box<FileLoader>) -> CodeMap {
 		CodeMap {
 			files: RefCell::new(Vec::new()),
@@ -480,7 +482,7 @@ mod tests {
 
 	#[test]
 	fn t1() {
-		let cm = CodeMap::new();
+		let cm = CodeMap::default();
 		let fm1 = cm.new_filemap("fm1", "foo\nbar baz\n\nend");
 		let fm2 = cm.new_filemap("fm2", "\t\n\na\n\nb");
 		let mut fmit1 = fm1.iter();
