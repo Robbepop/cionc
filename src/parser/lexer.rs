@@ -145,6 +145,17 @@ impl<'ctx> Lexer<'ctx> {
 		(self.peeked[0].ch, self.peeked[1].ch)
 	}
 
+	fn expect_char(&mut self, behaviour: ConsumeBehaviour, ch: char) -> &mut Self {
+		self.consume(behaviour);
+		if self.peek() == ch {
+			self.consume(behaviour);
+		}
+		else {
+			// TODO: error! expected 'ch' character!
+		}
+		self
+	}
+
 	/// Returns the given token, used as helper method
 	/// for method chaining in order to improve the code-flow
 	/// May be more important in future versions for managing
@@ -209,10 +220,8 @@ impl<'ctx> Lexer<'ctx> {
 	// e.g. 'a'.
 	fn scan_char_closure(&mut self) -> TokenAndSpan {
 		use parser::token::Token::Error;
-		match self.peek() {
-			'\'' => self.scan_char_suffix(),
-			_    => self.make(Error) // error: expected a ' to close char literal!
-		}
+		self.expect_char(Dump, '\'');
+		self.scan_char_suffix()
 	}
 
 	// Accepts char sequences for short-unicode annotation.
@@ -256,8 +265,15 @@ impl<'ctx> Lexer<'ctx> {
 	// e.g. '\u{7FFFFF}'
 	fn scan_char_unicode(&mut self) -> TokenAndSpan {
 		assert_eq!(self.peek(), 'u');
-		// TODO ...
-		self.scan_char_closure()
+		self.expect_char(Keep, '{');
+		let c = self.consume_counted(Keep, |c| c.is_hexdec_numeral(), |_| false);
+		if 2 <= c && c <= 6 {
+			self.expect_char(Keep, '}');
+			self.scan_char_closure()
+		}
+		else {
+			self.make(Token::Error)
+		}
 	}
 
 	// Accepts char sequences with escape sequences as content.
