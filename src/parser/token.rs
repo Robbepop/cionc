@@ -5,8 +5,6 @@
 // The tokens and their layout used in this simple implementation
 // are based on the Rustc token types.
 
-use std::rc::Rc;
-
 use parser::string_cache::Name;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]

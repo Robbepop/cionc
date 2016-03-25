@@ -5,7 +5,7 @@ use parser::util::char_util::CharProperties;
 use parser::token::*;
 use parser::compile_context::CompileContext;
 use parser::string_cache::Name;
-use parser::code_map::{FileMap, FileMapIterator, CharAndPos, BytePos, Span};
+use parser::code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 //
@@ -606,7 +606,7 @@ mod tests {
 	use super::*;
 	use parser::token::*;
 	use parser::compile_context::CompileContext;
-	use parser::code_map::{BytePos, Span};
+	use parser::code_map::Span;
 
 	fn check_lexer_output_against(
 		lexer: &mut Lexer,
