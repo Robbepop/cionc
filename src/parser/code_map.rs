@@ -72,14 +72,6 @@ impl CharPos {
 		let CharPos(n) = *self;
 		n
 	}
-
-	fn zero() -> CharPos {
-		CharPos::from(0)
-	}
-
-	fn one() -> CharPos {
-		CharPos::from(1)
-	}
 }
 
 impl From<usize> for CharPos {
@@ -119,6 +111,7 @@ impl fmt::Debug for Span {
 
 impl Span {
 	pub fn new(lo: BytePos, hi: BytePos) -> Self {
+		assert!(lo <= hi);
 		Span {lo: lo, hi: hi}
 	}
 
@@ -149,6 +142,11 @@ impl Span {
 		else {
 			None
 		}
+	}
+
+	pub fn extend(self, pos: BytePos) -> Span {
+		use std::cmp::{min,max};
+		Span::new(min(self.lo, pos), max(self.hi, pos))
 	}
 }
 
@@ -215,7 +213,7 @@ pub struct FileMapIterator {
 
 /// FileMapIterator returns pairs of char and BytePos
 /// wrapped in this struct for better readability.
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub struct CharAndPos {
 	pub ch: char,
 	pub pos: BytePos
@@ -422,7 +420,7 @@ impl CodeMap {
 		filemap
 	}
 
-	fn new_filemap(&self, filename: &str, src: &str) -> FileMap {
+	pub fn new_filemap(&self, filename: &str, src: &str) -> FileMap {
 		self.new_filemap_from(filename.to_owned(), src.to_owned())
 	}
 

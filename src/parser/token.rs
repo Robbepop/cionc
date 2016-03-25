@@ -46,7 +46,7 @@ pub enum DelimitToken {
     Brace,   // { or }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum LiteralToken {
     // Byte(Name),      // e.g. b'a'
     Char(Name),      // e.g. 'a'
@@ -56,7 +56,7 @@ pub enum LiteralToken {
     // RawString(Name), // e.g. r#"Hello, World!"#
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Token {
     /* Logical operators, e.g. && or || */
     LogicalOp(LogicalOpToken),
@@ -102,5 +102,4 @@ pub enum Token {
 
     /* Token indicating that an errornous sequence has been found */
     Error,
-    ErrStr(Rc<String>) // just for debug purpose
 }
