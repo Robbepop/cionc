@@ -174,17 +174,14 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_multi_line_comment(&mut self) -> TokenAndSpan {
+		use parser::token::Token::{Comment, Error};
 		assert_eq!(self.peek(), '*');
 		self.consume(Dump);
 		loop {
-			match self.peek() {
-				'*' => match self.consume(Dump).peek() {
-					'/' => return self.consume(Dump).make(Token::Comment),
-					'*' => continue,
-					_   => self.consume(Dump)
-				},
-				'\0' => return self.make(Token::Error),
-				_    => self.consume(Dump)
+			match self.peek_2() {
+				('*', '/') => return self.consume_n(Dump, 2).make(Comment),
+				('\0', _ ) => return self.make(Error),
+				_ => self.consume(Dump)
 			};
 		}
 	}
@@ -306,15 +303,6 @@ impl<'ctx> Lexer<'ctx> {
 			},
 			_ => self
 		}
-		// if self.peek() == '\'' {
-		// 	if self.consume(Dump).peek().is_alpha() {
-		// 		self.consume_named_while(Keep, |c| c.is_alpha_numeral() || c == '_');
-		// 	}
-		// 	else {
-		// 		// TODO: error!
-		// 	}
-		// }
-		// self
 	}
 
 	fn scan_float_suffix(&mut self) -> TokenAndSpan {
@@ -630,16 +618,16 @@ mod tests {
 		let fm  = ctx.code_map.borrow_mut().new_filemap("fm1", "()[]{}?;,_");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
-			(OpenDelim(Paren), (0, 0)),
-			(CloseDelim(Paren), (1, 1)),
-			(OpenDelim(Bracket), (2, 2)),
+			(OpenDelim(Paren),    (0, 0)),
+			(CloseDelim(Paren),   (1, 1)),
+			(OpenDelim(Bracket),  (2, 2)),
 			(CloseDelim(Bracket), (3, 3)),
-			(OpenDelim(Brace), (4, 4)),
-			(CloseDelim(Brace), (5, 5)),
-			(Question, (6, 6)),
-			(SemiColon, (7, 7)),
-			(Comma, (8, 8)),
-			(Underscore, (9, 9))
+			(OpenDelim(Brace),    (4, 4)),
+			(CloseDelim(Brace),   (5, 5)),
+			(Question,            (6, 6)),
+			(SemiColon,           (7, 7)),
+			(Comma,               (8, 8)),
+			(Underscore,          (9, 9))
 		]);
 	}
 
@@ -680,8 +668,8 @@ mod tests {
 			 = => ==   \
 			 & && &=   \
 			 | || |=   \
-			 < << <<=  \
-			 > >> >>="); // <= 10 columns per row!
+			 < << <<= <= \
+			 > >> >>= >="); // <= 10 columns per row!
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
 			(Dot,            ( 0,  0)),
@@ -754,13 +742,17 @@ mod tests {
 			(BinOp(Shl),     (112, 113)),
 			(Whitespace,     (114, 114)),
 			(BinOpEq(Shl),   (115, 117)),
-			(Whitespace,     (118, 119)),
-
-			(RelOp(GreaterThan),(120, 120)),
+			(Whitespace,     (118, 118)),
+			(RelOp(LessEq),  (119, 120)),
 			(Whitespace,     (121, 121)),
-			(BinOp(Shr),     (122, 123)),
-			(Whitespace,     (124, 124)),
-			(BinOpEq(Shr),   (125, 127)),
+
+			(RelOp(GreaterThan),(122, 122)),
+			(Whitespace,     (123, 123)),
+			(BinOp(Shr),     (124, 125)),
+			(Whitespace,     (126, 126)),
+			(BinOpEq(Shr),   (127, 129)),
+			(Whitespace,     (130, 130)),
+			(RelOp(GreaterEq), (131, 132)),
 		]);
 	}
 
@@ -985,27 +977,6 @@ mod tests {
 	// 	assert_eq!(lexer.next_token(),
 	// 		Literal(Float(sc.borrow_mut().intern("9.87654321e-0'b37a"))));
 	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
-
-	// #[test]
-	// fn simple_less_symbol() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::BinOpToken::*;
-	// 	use parser::token::RelOpToken::*;
-	// 	let solution: Vec<Token> = vec![
-	// 		BinOpEq(Shl),
-	// 		Whitespace,
-	// 		BinOp(Shl),
-	// 		Whitespace,
-	// 		RelOp(LessEq),
-	// 		Whitespace,
-	// 		RelOp(LessThan)
-	// 	];
-	// 	let ctx = CompileContext::default();
-	// 	let lexer = Lexer::new_from_str(&ctx, "<<= << <= <");
-	// 	for zipped in solution.into_iter().zip(lexer) {
-	// 		assert_eq!(zipped.0, zipped.1);
-	// 	}
 	// }
 
 	// #[test]
