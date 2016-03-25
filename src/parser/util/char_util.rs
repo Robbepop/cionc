@@ -67,6 +67,7 @@ mod tests {
 		assert!('\n'.is_whitespace());
 		assert!('\r'.is_whitespace());
 		assert!('\t'.is_whitespace());
+		assert!(!'a'.is_whitespace());
 	}
 
 	#[test]
@@ -77,13 +78,9 @@ mod tests {
 			'A','B','C','D','E','F'];
 		for c in characters {
 			println!("{}, ", c);
-			println!("	binary");
 			assert_eq!(c.is_digit(2), c.is_binary_numeral());
-			println!("	octal");
 			assert_eq!(c.is_digit(8), c.is_octal_numeral());
-			println!("	decimal");
 			assert_eq!(c.is_digit(10), c.is_decimal_numeral());
-			println!("	hexdec");
 			assert_eq!(c.is_digit(16), c.is_hexdec_numeral());
 		}
 	}

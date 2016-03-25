@@ -764,6 +764,67 @@ mod tests {
 		]);
 	}
 
+	#[test]
+	fn simple_whitespace() {
+		use parser::token::Token::*;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"   .\n\n\n.\r\n\r\n.\t\t\t");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace, ( 0,  2)),
+			(Dot,        ( 3,  3)),
+			(Whitespace, ( 4,  6)),
+			(Dot,        ( 7,  7)),
+			(Whitespace, ( 8, 11)),
+			(Dot,        (12, 12)),
+			(Whitespace, (13, 15)),
+		]);
+	}
+
+	#[test]
+	fn simple_identifiers() {
+		use parser::token::Token::*;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"true false \
+			 alphanumeric \
+			 with_underscore \
+			 BiGaNdSmAlL \
+			 underscores_at_the_end__ \
+			 with_N0m3r5 \
+			 j__u___5__T");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name1 = sc.borrow_mut().intern("true");
+		let name2 = sc.borrow_mut().intern("false");
+		let name3 = sc.borrow_mut().intern("alphanumeric");
+		let name4 = sc.borrow_mut().intern("with_underscore");
+		let name5 = sc.borrow_mut().intern("BiGaNdSmAlL");
+		let name6 = sc.borrow_mut().intern("underscores_at_the_end__");
+		let name7 = sc.borrow_mut().intern("with_N0m3r5");
+		let name8 = sc.borrow_mut().intern("j__u___5__T");
+		check_lexer_output_against(&mut lexer, &[
+			(Identifier(name1), ( 0,  3)),
+			(Whitespace,        ( 4,  4)),
+			(Identifier(name2), ( 5,  9)),
+			(Whitespace,        (10, 10)),
+			(Identifier(name3), (11, 22)),
+			(Whitespace,        (23, 23)),
+			(Identifier(name4), (24, 38)),
+			(Whitespace,        (39, 39)),
+			(Identifier(name5), (40, 50)),
+			(Whitespace,        (51, 51)),
+			(Identifier(name6), (52, 75)),
+			(Whitespace,        (76, 76)),
+			(Identifier(name7), (77, 87)),
+			(Whitespace,        (88, 88)),
+			(Identifier(name8), (89, 99))
+		]);
+	}
+
 	// #[test]
 	// fn simple_char_literal() {
 	// 	use parser::token::Token::{Whitespace, Literal, EndOfFile};
@@ -790,14 +851,6 @@ mod tests {
 	// 	assert_eq!(lexer.next_token(),
 	// 		Literal(Char(sc.borrow_mut().intern(r"'\n'asd0"))));
 	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
-
-	// #[test]
-	// fn simple_whitespace() {
-	// 	let ctx   = CompileContext::default();
-	// 	let mut lexer = Lexer::new_from_str(&ctx, " \t\r\n");
-	// 	assert_eq!(lexer.next_token(), Token::Whitespace);
-	// 	assert_eq!(lexer.next_token(), Token::EndOfFile);
 	// }
 
 	// #[test]
@@ -931,37 +984,6 @@ mod tests {
 	// 	assert_eq!(lexer.next_token(), Whitespace);
 	// 	assert_eq!(lexer.next_token(),
 	// 		Literal(Float(sc.borrow_mut().intern("9.87654321e-0'b37a"))));
-	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
-
-	// #[test]
-	// fn simple_identifiers() {
-	// 	use parser::token::Token::*;
-	// 	let ctx = CompileContext::default();
-	// 	let mut lexer = Lexer::new_from_str(&ctx,
-	// 		"true false
-	// 		 alphanumeric
-	// 		 with_underscore
-	// 		 underscores_at_the_end__
-	// 		 with_n0m3r5");
-	// 	let sc = &ctx.string_cache;
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("true")));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("false")));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("alphanumeric")));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("with_underscore")));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("underscores_at_the_end__")));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Identifier(sc.borrow_mut().intern("with_n0m3r5")));
 	// 	assert_eq!(lexer.next_token(), EndOfFile);
 	// }
 

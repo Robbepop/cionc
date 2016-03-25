@@ -75,6 +75,7 @@ pub enum Token {
 
     /* Identifiers with their given name */
     Identifier(Name),
+
     /* Literal token, e.g. an integer, float or string literal */
     Literal(LiteralToken),
 
