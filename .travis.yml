@@ -2,9 +2,9 @@ sudo: false
 language: rust
 
 rust:
-  - nightly
-  - beta
   - stable
+  - beta
+  - nightly
 
 matrix:
     allow_failures:
@@ -25,10 +25,11 @@ before_script:
 script:
   - travis-cargo build
   - travis-cargo test
+  - travis-cargo --only stable doc
 
 after_success:
-  - |
-    travis-cargo --only stable coveralls --no-sudo --verify
+  - travis-cargo --only stable doc-upload
+  - travis-cargo --only stable coveralls --no-sudo --verify
 
 env:
   global:
