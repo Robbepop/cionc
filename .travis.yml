@@ -24,8 +24,8 @@ before_script:
 
 script:
   - |
-    travis-cargo build --verbose &&
-    travis-cargo test --verbose
+    travis-cargo build &&
+    travis-cargo test
 
 after_success:
   - |
