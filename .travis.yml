@@ -19,11 +19,12 @@ before_script:
 script:
   - |
     cargo build --verbose --no-default-features &&
-    cargo build --verbose --features yaml &&
-    cargo test --verbose --features yaml &&
-    travis-cargo --only nightly build -- --features travis &&
-    travis-cargo --only nightly bench &&
-    travis-cargo --only stable doc -- --features yaml
+    #cargo build --verbose --features yaml &&
+    cargo test --verbose &&
+    #cargo test --verbose --features yaml &&
+    #travis-cargo --only nightly build -- --features travis &&
+    #travis-cargo --only nightly bench &&
+    #travis-cargo --only stable doc -- --features yaml
 
 addons:
   apt:
@@ -34,5 +35,9 @@ addons:
 
 after_success:
   - |
-    travis-cargo --only stable doc-upload &&
+    #travis-cargo --only stable doc-upload &&
     travis-cargo --only stable coveralls --no-sudo -- --features yaml
+
+env:
+  global:
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=travis
