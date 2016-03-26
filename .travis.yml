@@ -6,25 +6,9 @@ rust:
   - beta
   - stable
 
-# Only while clippy is failing
 matrix:
     allow_failures:
         - rust: nightly
-
-before_script:
-  - |
-    pip install 'travis-cargo<0.2' --user &&
-    export PATH=$HOME/.local/bin:$PATH
-
-script:
-  - |
-    cargo build --verbose --no-default-features &&
-    #cargo build --verbose --features yaml &&
-    cargo test --verbose &&
-    #cargo test --verbose --features yaml &&
-    #travis-cargo --only nightly build -- --features travis &&
-    #travis-cargo --only nightly bench &&
-    #travis-cargo --only stable doc -- --features yaml
 
 addons:
   apt:
@@ -33,10 +17,19 @@ addons:
     - libelf-dev
     - libdw-dev
 
+before_script:
+  - |
+    pip install 'travis-cargo<0.2' --user &&
+    export PATH=$HOME/.local/bin:$PATH
+
+script:
+  - |
+    travis-cargo build --verbose &&
+    travis-cargo test --verbose
+
 after_success:
   - |
-    #travis-cargo --only stable doc-upload &&
-    travis-cargo --only stable coveralls --no-sudo -- --features yaml
+    travis-cargo --only stable coveralls --no-sudo
 
 env:
   global:
