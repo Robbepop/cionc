@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
-use util::is_any_of::*;
-use parser::util::char_util::CharProperties;
-use parser::token::*;
-use parser::compile_context::CompileContext;
-use parser::string_cache::Name;
-use parser::code_map::{FileMap, FileMapIterator, CharAndPos, Span};
+use cionc_utils::is_any_of::*;
+use util::char_util::CharProperties;
+use token::*;
+use compile_context::CompileContext;
+use string_cache::Name;
+use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 //
@@ -185,7 +185,7 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_multi_line_comment(&mut self) -> TokenAndSpan {
-		use parser::token::Token::{Comment, Error};
+		use token::Token::{Comment, Error};
 		assert_eq!(self.peek(), '*');
 		self.consume(Dump);
 		loop {
@@ -204,8 +204,8 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_char_suffix(&mut self) -> TokenAndSpan {
-		use parser::token::Token::*;
-		use parser::token::LiteralToken::Char;
+		use token::Token::*;
+		use token::LiteralToken::Char;
 		assert_eq!(self.peek(), '\'');
 		match self.consume(Dump).peek() {
 			c if c.is_alpha() => {
@@ -219,7 +219,6 @@ impl<'ctx> Lexer<'ctx> {
 	// Accepts closed char sequences and forwards to the suffix scanning routine.
 	// e.g. 'a'.
 	fn scan_char_closure(&mut self) -> TokenAndSpan {
-		use parser::token::Token::Error;
 		self.expect_char(Dump, '\'');
 		self.scan_char_suffix()
 	}
@@ -227,7 +226,7 @@ impl<'ctx> Lexer<'ctx> {
 	// Accepts char sequences for short-unicode annotation.
 	// e.g. '\x7F'
 	fn scan_char_ascii_hexcode(&mut self) -> TokenAndSpan {
-		use parser::token::Token::Error;
+		use token::Token::Error;
 		assert_eq!(self.peek(), 'x');
 		match self.consume(Keep).peek() {
 			/* valid unicode starting code-point */
@@ -279,7 +278,7 @@ impl<'ctx> Lexer<'ctx> {
 	// Accepts char sequences with escape sequences as content.
 	// e.g. '\n', '\\', '\'', '\x7F' or '\u{7FFFFF}', etc.
 	fn scan_char_escape_sequence(&mut self) -> TokenAndSpan {
-		use parser::token::Token::Error;
+		use token::Token::Error;
 		assert_eq!(self.peek(), '\\');
 		match self.consume(Keep).peek() {
 			'0'  | /* Null */
@@ -297,7 +296,7 @@ impl<'ctx> Lexer<'ctx> {
 
 	fn scan_char_literal(&mut self) -> TokenAndSpan {
 		use std::ascii::AsciiExt;
-		use parser::token::Token::*;
+		use token::Token::*;
 		assert_eq!(self.peek(), '\'');
 		match self.consume(Dump).peek() {
 			'\\' => self.scan_char_escape_sequence(),
@@ -322,15 +321,15 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_float_suffix(&mut self) -> TokenAndSpan {
-		use parser::token::Token::*;
-		use parser::token::LiteralToken::Float;
+		use token::Token::*;
+		use token::LiteralToken::Float;
 		self.scan_integer_and_float_suffix();
 		self.make(Literal(Float(self.fetch_name())))
 	}
 
 	fn scan_integer_suffix(&mut self) -> TokenAndSpan {
-		use parser::token::Token::*;
-		use parser::token::LiteralToken::Integer;
+		use token::Token::*;
+		use token::LiteralToken::Integer;
 		self.scan_integer_and_float_suffix();
 		self.make(Literal(Integer(self.fetch_name())))
 	}
@@ -413,8 +412,8 @@ impl<'ctx> Lexer<'ctx> {
 	/// Or a range expression:
 	///    0..10
 	fn scan_possible_float_literal(&mut self) -> TokenAndSpan {
-		use parser::token::Token::*;
-		use parser::token::LiteralToken::Integer;
+		use token::Token::*;
+		use token::LiteralToken::Integer;
 		assert_eq!(self.peek(), '.');
 		match self.peek_2() {
 			('.',  c ) if c.is_decimal_numeral() => self.scan_float_literal(),
@@ -454,11 +453,11 @@ pub trait TokenStream {
 
 impl<'ctx> TokenStream for Lexer<'ctx> {
 	fn next_token(&mut self) -> TokenAndSpan {
-		use parser::token::Token::*;
-		use parser::token::DelimitToken::*;
-		use parser::token::BinOpToken::*;
-		use parser::token::LogicalOpToken::*;
-		use parser::token::RelOpToken::*;
+		use token::Token::*;
+		use token::DelimitToken::*;
+		use token::BinOpToken::*;
+		use token::LogicalOpToken::*;
+		use token::RelOpToken::*;
 
 		// self.clear_buffer();
 		self.reset_span_consumed();
@@ -493,6 +492,12 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 				('.', '.') => self.consume_n(Dump, 2).make(DotDotDot),
 				('.',  _ ) => self.consume(Dump).make(DotDot),
 				( _ ,  _ ) => self.make(Dot)
+			},
+
+			/* Tokens starting with ':' */
+			':' => match self.consume(Dump).peek() {
+				':' => self.consume(Dump).make(ColonColon),
+				_   => self.make(Colon)
 			},
 
 			/* Tokens starting with '+' */
@@ -608,9 +613,9 @@ impl<'ctx> Iterator for Lexer<'ctx> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use parser::token::*;
-	use parser::compile_context::CompileContext;
-	use parser::code_map::Span;
+	use token::*;
+	use compile_context::CompileContext;
+	use code_map::Span;
 
 	fn check_lexer_output_against(
 		lexer: &mut Lexer,
@@ -628,8 +633,8 @@ mod tests {
 
 	#[test]
 	fn simple_tokens() {
-		use parser::token::Token::*;
-		use parser::token::DelimitToken::*;
+		use token::Token::*;
+		use token::DelimitToken::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap("fm1", "()[]{}?;,_");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
@@ -649,7 +654,7 @@ mod tests {
 
 	#[test]
 	fn simple_comments() {
-		use parser::token::Token::*;
+		use token::Token::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
@@ -666,10 +671,10 @@ mod tests {
 
 	#[test]
 	fn finite_tokens() {
-		use parser::token::Token::*;
-		use parser::token::BinOpToken::*;
-		use parser::token::RelOpToken::*;
-		use parser::token::LogicalOpToken::*;
+		use token::Token::*;
+		use token::BinOpToken::*;
+		use token::RelOpToken::*;
+		use token::LogicalOpToken::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
@@ -684,6 +689,7 @@ mod tests {
 			 = => ==   \
 			 & && &=   \
 			 | || |=   \
+			 : ::      \
 			 < << <<= <= \
 			 > >> >>= >="); // <= 10 columns per row!
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
@@ -753,28 +759,33 @@ mod tests {
 			(BinOpEq(Or),    (105, 106)),
 			(Whitespace,     (107, 109)),
 
-			(RelOp(LessThan),(110, 110)),
+			(Colon,          (110, 110)),
 			(Whitespace,     (111, 111)),
-			(BinOp(Shl),     (112, 113)),
-			(Whitespace,     (114, 114)),
-			(BinOpEq(Shl),   (115, 117)),
-			(Whitespace,     (118, 118)),
-			(RelOp(LessEq),  (119, 120)),
-			(Whitespace,     (121, 121)),
+			(ColonColon,     (112, 113)),
+			(Whitespace,     (114, 119)),
 
-			(RelOp(GreaterThan),(122, 122)),
-			(Whitespace,     (123, 123)),
-			(BinOp(Shr),     (124, 125)),
-			(Whitespace,     (126, 126)),
-			(BinOpEq(Shr),   (127, 129)),
-			(Whitespace,     (130, 130)),
-			(RelOp(GreaterEq), (131, 132)),
+			(RelOp(LessThan),(120, 120)),
+			(Whitespace,     (121, 121)),
+			(BinOp(Shl),     (122, 123)),
+			(Whitespace,     (124, 124)),
+			(BinOpEq(Shl),   (125, 127)),
+			(Whitespace,     (128, 128)),
+			(RelOp(LessEq),  (129, 130)),
+			(Whitespace,     (131, 131)),
+
+			(RelOp(GreaterThan),(132, 132)),
+			(Whitespace,     (133, 133)),
+			(BinOp(Shr),     (134, 135)),
+			(Whitespace,     (136, 136)),
+			(BinOpEq(Shr),   (137, 139)),
+			(Whitespace,     (140, 140)),
+			(RelOp(GreaterEq), (141, 142)),
 		]);
 	}
 
 	#[test]
 	fn simple_whitespace() {
-		use parser::token::Token::*;
+		use token::Token::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
@@ -793,7 +804,7 @@ mod tests {
 
 	#[test]
 	fn simple_identifiers() {
-		use parser::token::Token::*;
+		use token::Token::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
@@ -835,8 +846,8 @@ mod tests {
 
 	// #[test]
 	// fn simple_char_literal() {
-	// 	use parser::token::Token::{Whitespace, Literal, EndOfFile};
-	// 	use parser::token::LiteralToken::Char;
+	// 	use token::Token::{Whitespace, Literal, EndOfFile};
+	// 	use token::LiteralToken::Char;
 	// 	let ctx   = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(
 	// 		&ctx, r"'c' '\n' '\t' '\x7F' 'a's '\n'asd0");
@@ -863,8 +874,8 @@ mod tests {
 
 	// #[test]
 	// fn simple_integral_literals() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::LiteralToken::Integer;
+	// 	use token::Token::*;
+	// 	use token::LiteralToken::Integer;
 	// 	let ctx   = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(&ctx,
 	// 		"0b1011_0010_0000_0001
@@ -901,8 +912,8 @@ mod tests {
 
 	// #[test]
 	// fn simple_integral_suffixes() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::LiteralToken::Integer;
+	// 	use token::Token::*;
+	// 	use token::LiteralToken::Integer;
 	// 	let ctx = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(&ctx,
 	// 		"0b0000__0101__1111_0001'i32
@@ -927,8 +938,8 @@ mod tests {
 
 	// #[test]
 	// fn simple_float_literals() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::LiteralToken::Float;
+	// 	use token::Token::*;
+	// 	use token::LiteralToken::Float;
 	// 	let ctx = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(&ctx,
 	// 		"0.0
@@ -968,8 +979,8 @@ mod tests {
 
 	// #[test]
 	// fn simple_float_suffixes() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::LiteralToken::Float;
+	// 	use token::Token::*;
+	// 	use token::LiteralToken::Float;
 	// 	let ctx = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(&ctx,
 	// 		"0.0'f32
@@ -997,9 +1008,9 @@ mod tests {
 
 	// #[test]
 	// fn dot_after_number_sequence() {
-	// 	use parser::token::Token::*;
-	// 	use parser::token::LiteralToken::{Integer};
-	// 	use parser::token::DelimitToken::*;
+	// 	use token::Token::*;
+	// 	use token::LiteralToken::{Integer};
+	// 	use token::DelimitToken::*;
 	// 	let ctx = CompileContext::default();
 	// 	let mut lexer = Lexer::new_from_str(&ctx, "42.foo() 5..10 1.e12");
 	// 	let sc = &ctx.string_cache;

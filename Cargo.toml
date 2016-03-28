@@ -2,3 +2,12 @@
 name = "cionc"
 version = "0.1.0"
 authors = ["Robbepop <robbepop@web.de>"]
+
+[[bin]]
+name = "cionc"
+
+[dependencies.cionc_parser]
+path = "src/parser"
+
+[dependencies.cionc_utils]
+path = "src/utils"

@@ -1,4 +1,4 @@
-use ::util::in_range_of::*;
+use cionc_utils::in_range_of::*;
 
 // This trait is just a very simply utility for working with characters in the Lexer
 // so that checks like is_whitespace can be called via method call syntax
@@ -58,8 +58,9 @@ impl CharProperties for char {
 	}
 }
 
+#[cfg(test)]
 mod tests {
-	use super::CharProperties;
+	use super::*;
 
 	#[test]
 	fn test_whitespace() {

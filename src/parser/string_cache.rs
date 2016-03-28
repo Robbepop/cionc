@@ -85,17 +85,20 @@ impl StringCache {
 	}
 }
 
+#[cfg(test)]
 mod tests {
 	use super::*;
 
 	#[test]
 	fn simple_test() {
 		let cache = StringCache::default();
+		assert_eq!(cache.len(), 0);
 		assert_eq!(cache.intern("foo"), Name(0));
 		assert_eq!(cache.intern("bar"), Name(1));
 		assert_eq!(cache.intern("baz"), Name(2));
 		assert_eq!(cache.intern("bat"), Name(3));
 		assert_eq!(cache.intern("bam"), Name(4));
+		assert_eq!(cache.len(), 5);
 		assert_eq!(cache.get(Name(0)), RcBoxStr::new("foo"));
 		assert_eq!(cache.get(Name(1)), RcBoxStr::new("bar"));
 		assert_eq!(cache.get(Name(2)), RcBoxStr::new("baz"));
@@ -106,5 +109,8 @@ mod tests {
 		assert_eq!(cache.intern("baz"), Name(2));
 		assert_eq!(cache.intern("bat"), Name(3));
 		assert_eq!(cache.intern("bam"), Name(4));
+		assert_eq!(cache.len(), 5);
+		assert_eq!(cache.intern("new"), Name(5)); // new item!
+		assert_eq!(cache.len(), 6);
 	}
 }

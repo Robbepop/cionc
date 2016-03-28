@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use parser::string_cache::StringCache;
-use parser::code_map::CodeMap;
+
+use string_cache::StringCache;
+use code_map::CodeMap;
 
 // This type is the root to manage several subcomponents.
 // In later revisions it has a StringTable, a SymbolTable, an ErrorHandler and more

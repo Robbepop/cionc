@@ -5,7 +5,7 @@
 // The tokens and their layout used in this simple implementation
 // are based on the Rustc token types.
 
-use parser::string_cache::Name;
+use string_cache::Name;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {

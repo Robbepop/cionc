@@ -299,7 +299,7 @@ impl FileMapData {
 		if self.initialized_until.get() < byte_pos {
 			self.register_line(byte_pos, ch);
 			self.register_multibyte(byte_pos, ch);
-			self.initialized_until.set(byte_pos + BytePos::from(ch.len_utf8()) - BytePos::one());
+			self.initialized_until.set(byte_pos + BytePos::from(ch.len_utf8() - 1));
 		}
 	}
 
@@ -463,7 +463,7 @@ struct Loc {
 }
 
 
-
+#[cfg(test)]
 mod tests {
 	use super::*;
 

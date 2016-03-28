@@ -1,3 +1,5 @@
+extern crate cionc_utils;
+
 pub mod token;
 pub mod lexer;
 pub mod compile_context;
