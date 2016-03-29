@@ -24,12 +24,12 @@ before_script:
 
 script:
   - travis-cargo build
-  - travis-cargo test -- --package cionc_parser --package cionc_utils
+  - travis-cargo test
   # - travis-cargo --only stable doc
 
 after_success:
   # - travis-cargo --only stable doc-upload
-  - travis-cargo --only stable coveralls --no-sudo --verify -- --package cionc_parser --package cionc_utils
+  - travis-cargo --only stable coveralls --no-sudo --verify
 
 env:
   global:

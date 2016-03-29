@@ -11,3 +11,11 @@ path = "src/parser"
 
 [dependencies.cionc_utils]
 path = "src/utils"
+
+[[test]]
+name = "test_cionc_parser"
+path = "src/parser/lib.rs"
+
+[[test]]
+name = "test_cionc_utils"
+path = "src/utils/lib.rs"
