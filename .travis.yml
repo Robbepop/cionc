@@ -29,7 +29,7 @@ script:
 
 after_success:
   # - travis-cargo --only stable doc-upload
-  - travis-cargo --only stable coveralls --no-sudo --verify
+  - travis-cargo --only stable coveralls --no-sudo --verify -- --package cionc_parser --package cionc_utils
 
 env:
   global:
