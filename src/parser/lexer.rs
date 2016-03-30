@@ -328,12 +328,6 @@ impl<'ctx> Lexer<'ctx> {
 		self.make(Token::Error) // TODO
 	}
 
-	fn make_float(&mut self) -> TokenAndSpan {
-		use token::Token::*;
-		use token::LiteralToken::Float;
-		self.make(Literal(Float(self.fetch_name())))
-	}
-
 	fn make_integer(&mut self) -> TokenAndSpan {
 		use token::Token::*;
 		use token::LiteralToken::Integer;
@@ -376,6 +370,12 @@ impl<'ctx> Lexer<'ctx> {
 		}
 	}
 
+	fn make_float(&mut self) -> TokenAndSpan {
+		use token::Token::*;
+		use token::LiteralToken::Float;
+		self.make(Literal(Float(self.fetch_name())))
+	}
+
 	fn scan_float_literal_exponent(&mut self) -> TokenAndSpan {
 		if self.peek() == 'e' {
 			self.consume(Keep);
@@ -404,7 +404,7 @@ impl<'ctx> Lexer<'ctx> {
 
 	/// Be careful, a '.' following a sequence of digits doesn't
 	/// nessecarily mean that the following characters are part of
-	/// a Float literal.
+	/// a float literal.
 	/// E.g. a method call on an integer literal may be possible, too:
 	///    42.foo()
 	/// Or a range expression:
@@ -414,8 +414,9 @@ impl<'ctx> Lexer<'ctx> {
 		use token::LiteralToken::Integer;
 		assert_eq!(self.peek(), '.');
 		match self.peek_2() {
-			('.',  c ) if c.is_decimal_numeral() => self.scan_float_literal(),
-			_ => self.make_integer()
+			('.',  c ) if c.is_decimal_numeral()
+				=> self.scan_float_literal(),
+			_ 	=> self.make_integer()
 		}
 	}
 
@@ -426,7 +427,7 @@ impl<'ctx> Lexer<'ctx> {
 				'b' => self.scan_binary_literal(),
 				'o' => self.scan_octal_literal(),
 				'x' => self.scan_hexdec_literal(),
-				'.' => self.scan_float_literal(),
+				'.' => self.scan_possible_float_literal(),
 
 				/* decimal number literal */
 				'0' ... '9' | '_' => self.scan_decimal_literal(),
@@ -1126,7 +1127,7 @@ mod tests {
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
-			"17.foo() 0xABC.exp() 0b110..0o736 1.23..45.6 5.e-12");
+			"17.foo() 0xABC.exp() 0b110..0o736 0..9 1.23..45.6 5.e-12");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
 		let sc = &ctx.string_cache;
 		let name_0  = sc.borrow_mut().intern(r"17");
@@ -1135,11 +1136,13 @@ mod tests {
 		let name_3  = sc.borrow_mut().intern(r"exp");
 		let name_4  = sc.borrow_mut().intern(r"0b110");
 		let name_5  = sc.borrow_mut().intern(r"0o736");
-		let name_6  = sc.borrow_mut().intern(r"1.23");
-		let name_7  = sc.borrow_mut().intern(r"45.6");
-		let name_8  = sc.borrow_mut().intern(r"5");
-		let name_9  = sc.borrow_mut().intern(r"e");
-		let name_10 = sc.borrow_mut().intern(r"12");
+		let name_6  = sc.borrow_mut().intern(r"0");
+		let name_7  = sc.borrow_mut().intern(r"9");
+		let name_8  = sc.borrow_mut().intern(r"1.23");
+		let name_9  = sc.borrow_mut().intern(r"45.6");
+		let name_10 = sc.borrow_mut().intern(r"5");
+		let name_11 = sc.borrow_mut().intern(r"e");
+		let name_12 = sc.borrow_mut().intern(r"12");
 		check_lexer_output_against(&mut lexer, &[
 			(Literal(Integer(name_0)),  ( 0,  1)),
 			(Dot,                       ( 2,  2)),
@@ -1157,39 +1160,19 @@ mod tests {
 			(DotDot,                    (26, 27)),
 			(Literal(Integer(name_5)),  (28, 32)),
 			(Whitespace,                (33, 33)),
-			(Literal(Float(name_6)),    (34, 37)),
-			(DotDot,                    (38, 39)),
-			(Literal(Float(name_7)),    (40, 43)),
-			(Whitespace,                (44, 44)),
-			(Literal(Integer(name_8)),  (45, 45)),
-			(Dot,                       (46, 46)),
-			(Identifier(name_9),        (47, 47)),
-			(BinOp(Minus),              (48, 48)),
-			(Literal(Integer(name_10)), (49, 50)),
+			(Literal(Integer(name_6)),  (34, 34)),
+			(DotDot,                    (35, 36)),
+			(Literal(Integer(name_7)),  (37, 37)),
+			(Whitespace,                (38, 38)),
+			(Literal(Float(name_8)),    (39, 42)),
+			(DotDot,                    (43, 44)),
+			(Literal(Float(name_9)),    (45, 48)),
+			(Whitespace,                (49, 49)),
+			(Literal(Integer(name_10)), (50, 50)),
+			(Dot,                       (51, 51)),
+			(Identifier(name_11),       (52, 52)),
+			(BinOp(Minus),              (53, 53)),
+			(Literal(Integer(name_12)), (54, 55)),
 		]);
 	}
-
-	// #[test]
-	// fn dot_after_number_sequence() {
-	// 	use token::Token::*;
-	// 	use token::LiteralToken::{Integer};
-	// 	use token::DelimitToken::*;
-	// 	let ctx = CompileContext::default();
-	// 	let mut lexer = Lexer::new_from_str(&ctx, "42.foo() 5..10 1.e12");
-	// 	let sc = &ctx.string_cache;
-	// 	assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("42"))));
-	// 	assert_eq!(lexer.next_token(), Dot);
-	// 	assert_eq!(lexer.next_token(), Identifier(sc.borrow_mut().intern("foo")));
-	// 	assert_eq!(lexer.next_token(), OpenDelim(Paren));
-	// 	assert_eq!(lexer.next_token(), CloseDelim(Paren));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("5"))));
-	// 	assert_eq!(lexer.next_token(), DotDot);
-	// 	assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("10"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(), Literal(Integer(sc.borrow_mut().intern("1"))));
-	// 	assert_eq!(lexer.next_token(), Dot);
-	// 	assert_eq!(lexer.next_token(), Identifier(sc.borrow_mut().intern("e12")));
-	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
 }
