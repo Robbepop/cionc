@@ -377,30 +377,28 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_float_literal_exponent(&mut self) -> TokenAndSpan {
-		match self.peek() {
-			'e' => match self.consume(Keep).peek() {
-				'+' | '-' => match self.consume(Keep).peek() {
-					c if c.is_decimal_numeral() => {
-						self.consume_while(Keep, |c| c.is_decimal_numeral());
-						self.make_float()
-					},
-					_ => self.make(Token::Error) // Error: no valid digit found
-				},
-				_ => {
-					self.make(Token::Error) // Error: '+' or '-' must follow exponent 'e'
-				}
-			},
-			_ => {
-				self.make_float()
+		if self.peek() == 'e' {
+			self.consume(Keep);
+			let sign = self.peek();
+			if sign == '+' || sign == '-' {
+				self.consume(Keep);
+			}
+			else {
+				// Error: expected sign ('+' / '-') after exponent sign 'e'
+			}
+			let (count_digits, _ ) =
+				self.scan_digits_accumulated(10, 10, Contiguous);
+			if count_digits == 0 {
+				// Error: no valid digits found for exponent
 			}
 		}
+		self.make_float()
 	}
 
 	fn scan_float_literal(&mut self) -> TokenAndSpan {
-		let ( p, c ) = self.peek_2();
-		assert!(p == '.' && c.is_decimal_numeral());
-		self.consume_n(Keep, 2);
-		self.consume_while(Keep, |c| c.is_decimal_numeral() || c == '_');
+		self.expect_char(Keep, '.');
+		self.expect_by(Keep, |c| c.is_decimal_numeral());
+		self.scan_digits(10, 10);
 		self.scan_float_literal_exponent()
 	}
 
@@ -417,7 +415,7 @@ impl<'ctx> Lexer<'ctx> {
 		assert_eq!(self.peek(), '.');
 		match self.peek_2() {
 			('.',  c ) if c.is_decimal_numeral() => self.scan_float_literal(),
-			_ => self.make(Literal(Integer(self.fetch_name())))
+			_ => self.make_integer()
 		}
 	}
 
@@ -1044,7 +1042,6 @@ mod tests {
 	}
 
 	#[test]
-	#[allow(non_snake_case)]
 	fn hexdec_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
@@ -1075,75 +1072,102 @@ mod tests {
 		]);
 	}
 
-	// #[test]
-	// fn simple_float_literals() {
-	// 	use token::Token::*;
-	// 	use token::LiteralToken::Float;
-	// 	let ctx = CompileContext::default();
-	// 	let mut lexer = Lexer::new_from_str(&ctx,
-	// 		"0.0
-	// 		 42.0
-	// 		 0.24
-	// 		 13.37
-	// 		 0.00_00_1
-	// 		 1.23e+12
-	// 		 0.01e-07
-	// 		 1_.1_");
-	// 	let sc = &ctx.string_cache;
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("0.0"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("42.0"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("0.24"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("13.37"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("0.00_00_1"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("1.23e+12"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("0.01e-07"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("1_.1_"))));
-	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
+	#[test]
+	fn float_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Float;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0.0       \
+			 42.0      \
+			 0.24      \
+			 13.37     \
+			 0.00_00_1 \
+			 1.23e+12  \
+			 0.01e-07  \
+			 1_.1_     ");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0 = sc.borrow_mut().intern(r"0.0");
+		let name_1 = sc.borrow_mut().intern(r"42.0");
+		let name_2 = sc.borrow_mut().intern(r"0.24");
+		let name_3 = sc.borrow_mut().intern(r"13.37");
+		let name_4 = sc.borrow_mut().intern(r"0.00_00_1");
+		let name_5 = sc.borrow_mut().intern(r"1.23e+12");
+		let name_6 = sc.borrow_mut().intern(r"0.01e-07");
+		let name_7 = sc.borrow_mut().intern(r"1_.1_");
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Float(name_0)), ( 0,  2)),
+			(Whitespace,             ( 3,  9)),
+			(Literal(Float(name_1)), (10, 13)),
+			(Whitespace,             (14, 19)),
+			(Literal(Float(name_2)), (20, 23)),
+			(Whitespace,             (24, 29)),
+			(Literal(Float(name_3)), (30, 34)),
+			(Whitespace,             (35, 39)),
+			(Literal(Float(name_4)), (40, 48)),
+			(Whitespace,             (49, 49)),
+			(Literal(Float(name_5)), (50, 57)),
+			(Whitespace,             (58, 59)),
+			(Literal(Float(name_6)), (60, 67)),
+			(Whitespace,             (68, 69)),
+			(Literal(Float(name_7)), (70, 74)),
+			(Whitespace,             (75, 79)),
+		]);
+	}
 
-	// #[test]
-	// fn simple_float_suffixes() {
-	// 	use token::Token::*;
-	// 	use token::LiteralToken::Float;
-	// 	let ctx = CompileContext::default();
-	// 	let mut lexer = Lexer::new_from_str(&ctx,
-	// 		"0.0'f32
-	// 		 567.0'i32
-	// 		 9.9999'f64
-	// 		 1_2_3.3_2_1e+14'alpha
-	// 		 9.87654321e-0'b37a");
-	// 	let sc = &ctx.string_cache;
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("0.0'f32"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("567.0'i32"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("9.9999'f64"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("1_2_3.3_2_1e+14'alpha"))));
-	// 	assert_eq!(lexer.next_token(), Whitespace);
-	// 	assert_eq!(lexer.next_token(),
-	// 		Literal(Float(sc.borrow_mut().intern("9.87654321e-0'b37a"))));
-	// 	assert_eq!(lexer.next_token(), EndOfFile);
-	// }
+	#[test]
+	fn dot_after_number_sequence() {
+		use token::Token::{BinOp, OpenDelim, CloseDelim, Identifier, Literal, Dot, DotDot, Whitespace};
+		use token::LiteralToken::{Integer, Float};
+		use token::BinOpToken::Minus;
+		use token::DelimitToken::*;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"17.foo() 0xABC.exp() 0b110..0o736 1.23..45.6 5.e-12");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern(r"17");
+		let name_1  = sc.borrow_mut().intern(r"foo");
+		let name_2  = sc.borrow_mut().intern(r"0xABC");
+		let name_3  = sc.borrow_mut().intern(r"exp");
+		let name_4  = sc.borrow_mut().intern(r"0b110");
+		let name_5  = sc.borrow_mut().intern(r"0o736");
+		let name_6  = sc.borrow_mut().intern(r"1.23");
+		let name_7  = sc.borrow_mut().intern(r"45.6");
+		let name_8  = sc.borrow_mut().intern(r"5");
+		let name_9  = sc.borrow_mut().intern(r"e");
+		let name_10 = sc.borrow_mut().intern(r"12");
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(name_0)),  ( 0,  1)),
+			(Dot,                       ( 2,  2)),
+			(Identifier(name_1),        ( 3,  5)),
+			(OpenDelim(Paren),          ( 6,  6)),
+			(CloseDelim(Paren),         ( 7,  7)),
+			(Whitespace,                ( 8,  8)),
+			(Literal(Integer(name_2)),  ( 9, 13)),
+			(Dot,                       (14, 14)),
+			(Identifier(name_3),        (15, 17)),
+			(OpenDelim(Paren),          (18, 18)),
+			(CloseDelim(Paren),         (19, 19)),
+			(Whitespace,                (20, 20)),
+			(Literal(Integer(name_4)),  (21, 25)),
+			(DotDot,                    (26, 27)),
+			(Literal(Integer(name_5)),  (28, 32)),
+			(Whitespace,                (33, 33)),
+			(Literal(Float(name_6)),    (34, 37)),
+			(DotDot,                    (38, 39)),
+			(Literal(Float(name_7)),    (40, 43)),
+			(Whitespace,                (44, 44)),
+			(Literal(Integer(name_8)),  (45, 45)),
+			(Dot,                       (46, 46)),
+			(Identifier(name_9),        (47, 47)),
+			(BinOp(Minus),              (48, 48)),
+			(Literal(Integer(name_10)), (49, 50)),
+		]);
+	}
 
 	// #[test]
 	// fn dot_after_number_sequence() {
