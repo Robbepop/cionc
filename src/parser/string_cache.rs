@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use std::borrow::Borrow;
-use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Deref;
 
@@ -20,12 +19,6 @@ impl RcBoxStr {
         RcBoxStr {
             string: Rc::new(string.to_string().into_boxed_str()),
         }
-    }
-}
-
-impl Ord for RcBoxStr {
-    fn cmp(&self, other: &RcBoxStr) -> Ordering {
-        self[..].cmp(&other[..])
     }
 }
 

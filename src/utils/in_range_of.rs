@@ -15,6 +15,7 @@ mod tests {
 
 	#[test]
 	fn test() {
+		assert!(!0.in_range_of(1,3));
 		assert!( 1.in_range_of(1,3));
 		assert!( 2.in_range_of(1,3));
 		assert!( 3.in_range_of(1,3));

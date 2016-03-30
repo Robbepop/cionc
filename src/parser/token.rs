@@ -50,7 +50,7 @@ pub enum LiteralToken {
     Char(Name),      // e.g. 'a'
     Integer(Name),   // e.g. 5, 42, 1337, 0
     Float(Name),     // e.g. 0.1, 5.0, 13.37, 0.0
-    String(Name),    // e.g. "Hello, World!"
+    // String(Name),    // e.g. "Hello, World!"
     // RawString(Name), // e.g. r#"Hello, World!"#
 }
 
