@@ -75,7 +75,7 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn consume(&mut self, behaviour: ConsumeBehaviour) -> &mut Self {
-		assert_eq!(self.peeked.is_empty(), false);
+		assert!(!self.peeked.is_empty());
 		match behaviour {
 			Dump => {
 				let CharAndPos {ch: _, pos} = self.peeked.pop_front().unwrap();
@@ -271,83 +271,6 @@ impl<'ctx> Lexer<'ctx> {
 		count_digits
 	}
 
-	// Accepts closed char sequences and forwards to the suffix scanning routine.
-	// e.g. 'a'.
-	fn scan_char_closure(&mut self) -> TokenAndSpan {
-		use token::Token::Literal;
-		use token::LiteralToken::Char;
-		self.expect_char(Dump, '\'');
-		self.make(Literal(Char(self.fetch_name())))
-	}
-
-	// Accepts char sequences for short-unicode annotation.
-	// e.g. '\x7F'
-	fn scan_char_ascii_hexcode(&mut self) -> TokenAndSpan {
-		self.expect_char(Keep, 'x');
-		let (count_digits, accumulated) =
-			self.scan_digits_accumulated(16, 16, Contiguous);
-		if count_digits != 2 {
-			// Error: requires exactly 2 digits within char literal
-		}
-		if accumulated > 0x7F {
-			// Error: this form of character escape may only be used within the range [\x00-\x7F]
-		}
-		self.scan_char_closure()
-	}
-
-	// Accepts char sequences for long-unicode annotation.
-	// e.g. '\u{7FFFFF}'
-	fn scan_char_unicode(&mut self) -> TokenAndSpan {
-		use std::char;
-		self.expect_char(Keep, 'u');
-		self.expect_char(Keep, '{');
-		let (count_digits, accumulated) =
-			self.scan_digits_accumulated(16, 16, Contiguous);
-		if count_digits == 0 {
-			// Error: empty unicode escape not supported
-		}
-		if count_digits > 6 {
-			// Error: overlong unicode escape (can have at most 6 digits)
-		}
-		if char::from_u32(accumulated as u32).is_none() {
-			// Error: invalid unicode escape sequence
-		}
-		self.expect_char(Keep, '}');
-		self.scan_char_closure()
-	}
-
-	// Accepts char sequences with escape sequences as content.
-	// e.g. '\n', '\\', '\'', '\x7F' or '\u{7FFFFF}', etc.
-	fn scan_char_escape_sequence(&mut self) -> TokenAndSpan {
-		use token::Token::Error;
-		// assert_eq!(self.peek(), '\\');
-		self.expect_char(Keep, '\\');
-		match self.peek() {
-			'0'  | /* Null */
-			'n'  | /* LineFeed */
-			'r'  | /* CarryReturn */
-			't'  | /* Tab */
-			'\'' | /* Single-Quote */
-			'\\'   /* BackSlash */
-			     => self.consume(Keep).scan_char_closure(),
-
-			'x'  => self.scan_char_ascii_hexcode(),
-			'u'  => self.scan_char_unicode(),
-			_    => self.make(Error) // error: unknown escape sequence!
-		}
-	}
-
-	fn scan_char_literal(&mut self) -> TokenAndSpan {
-		use std::ascii::AsciiExt;
-		use token::Token::*;
-		assert_eq!(self.peek(), '\'');
-		match self.consume(Dump).peek() {
-			'\\' => self.scan_char_escape_sequence(),
-			c if c.is_ascii() => self.consume(Keep).scan_char_closure(),
-			_ => self.make(Error) // error: no valid ascii!
-		}
-	}
-
  	//==================================================================
  	// Number scanning routines
  	//==================================================================
@@ -434,8 +357,6 @@ impl<'ctx> Lexer<'ctx> {
 	/// Or a range expression:
 	///    0..10
 	fn scan_possible_float_literal(&mut self) -> TokenAndSpan {
-		use token::Token::*;
-		use token::LiteralToken::Integer;
 		assert_eq!(self.peek(), '.');
 		match self.peek_2() {
 			('.',  c ) if c.is_decimal_numeral()
@@ -484,49 +405,67 @@ impl<'ctx> Lexer<'ctx> {
 		true
 	}
 
-	fn scan_char_unicode2(&mut self) -> bool {
+	fn scan_char_unicode2(&mut self, char_encoding: CharEncoding) -> bool {
 		use std::char;
+		use std::ascii::AsciiExt;
 		self.expect_char(Keep, 'u');
 		self.expect_char(Keep, '{');
 		let (count_digits, accumulated) =
 			self.scan_digits_accumulated(16, 16, Contiguous);
+		let mut valid = true;
 		if count_digits == 0 {
 			// Error: empty unicode escape not supported
-			return false;
+			valid = false;
 		}
 		if count_digits > 6 {
 			// Error: overlong unicode escape (can have at most 6 digits)
-			return false;
+			valid = false;
 		}
-		if char::from_u32(accumulated as u32).is_none() {
-			// Error: invalid unicode escape sequence
-			return false;
-		}
+		match char::from_u32(accumulated as u32) {
+			Some(ch) => {
+				if char_encoding == Ascii && !ch.is_ascii() {
+					// Error: non ascii characters are not allowed in bytes or byte strings
+					valid = false;
+				}
+			},
+			None => {
+				// Error: invalid unicode escape sequence
+				valid = false
+			}
+		};
 		self.expect_char(Keep, '}');
-		true
+		valid
 	}
 
-    fn scan_char_or_byte_escape2(
+    fn scan_char_or_byte_escape(
     	&mut self,
     	char_encoding: CharEncoding,
     	delim: char
     )
     	-> bool
     {
-    	use std::ascii::AsciiExt;
-		use token::Token::Error;
     	self.expect_char(Keep, '\\');
 		match self.peek() {
 			'0'  | /* Null */
 			'n'  | /* LineFeed */
 			'r'  | /* CarryReturn */
 			't'  | /* Tab */
-			'\'' | /* Single-Quote */
 			'\\'   /* BackSlash */
 			     => self.consume(Keep),
-
+			'\'' => { /* Single-Quote */
+				if delim != '\'' {
+					// Error: can use escaped single-quote [\'] only in char or byte literals
+				}
+				self.consume(Keep)
+			},
+			'"'  => { /* Double-Quote */
+				if delim != '"' {
+					// Error: can use escaped double-quote [\"] only in string literals
+				}
+				self.consume(Keep)
+			}
 			'x'  => return self.scan_char_ascii_hexcode2(),
-			'u'  => return self.scan_char_unicode2(),
+			'u'  => return self.scan_char_unicode2(char_encoding),
 			_    => {
 				// Error: unknown escape sequence!
 				return false;
@@ -546,7 +485,7 @@ impl<'ctx> Lexer<'ctx> {
 		let mut valid = true;
 		match self.peek() {
 			'\\' => {
-				self.scan_char_or_byte_escape2(char_encoding, delim);
+				self.scan_char_or_byte_escape(char_encoding, delim);
 			},
 			c => {
 				if char_encoding == Ascii && !c.is_ascii() {
@@ -556,58 +495,84 @@ impl<'ctx> Lexer<'ctx> {
 				self.consume(Keep);
 			}
 		}
-		// TODO
 		valid
 	}
 
-	fn scan_char_or_byte_literal(&mut self, char_encoding: CharEncoding) -> TokenAndSpan {
+	fn scan_char_literal(&mut self) -> TokenAndSpan {
 		use token::Token::Literal;
 		use token::LiteralToken::Char;
 		self.expect_char(Dump, '\'');
-		if !self.scan_char_or_byte(char_encoding, '\'') {
+		if !self.scan_char_or_byte(Unicode, '\'') {
 			// Error: invalid char or byte literal
 		}
 		self.expect_char(Dump, '\'');
 		self.make(Literal(Char(self.fetch_name())))
 	}
 
-	fn scan_string_literal(&mut self, char_encoding: CharEncoding) -> TokenAndSpan {
+	fn scan_byte_literal(&mut self) -> TokenAndSpan {
 		use token::Token::Literal;
-		use token::LiteralToken::String;
-		use token::LiteralToken::ByteString;
+		use token::LiteralToken::Byte;
+		self.expect_char(Dump, 'b');
+		self.expect_char(Dump, '\'');
+		if !self.scan_char_or_byte(Ascii, '\'') {
+			// Error: invalid char or byte literal
+		}
+		self.expect_char(Dump, '\'');
+		self.make(Literal(Byte(self.fetch_name())))
+	}
+
+	fn scan_string(&mut self, char_encoding: CharEncoding) -> bool {
 		self.expect_char(Dump, '"');
 		let mut valid = true;
 		while self.peek() != '"' {
 			valid &= self.scan_char_or_byte(char_encoding, '"');
 		}
 		self.expect_char(Dump, '"');
+		valid
+	}
+
+	fn scan_string_literal(&mut self) -> TokenAndSpan {
+		use token::Token::Literal;
+		use token::LiteralToken::String;
+		let valid = self.scan_string(Unicode);
 		if !valid {
 			// Error: invalid string literal
 		}
-		match char_encoding {
-			Ascii => self.make(Literal(ByteString(self.fetch_name()))),
-			Unicode => self.make(Literal(String(self.fetch_name())))
+		self.make(Literal(String(self.fetch_name())))
+	}
+
+	fn scan_byte_string_literal(&mut self) -> TokenAndSpan {
+		use token::Token::Literal;
+		use token::LiteralToken::ByteString;
+		self.expect_char(Dump, 'b');
+		let valid = self.scan_string(Ascii);
+		if !valid {
+			// Error: invalid byte string literal
 		}
+		self.make(Literal(ByteString(self.fetch_name())))
 	}
 
 	fn scan_raw_string(
 		&mut self,
-		count_pounds: usize,
 		char_encoding: CharEncoding
 	)
-		-> bool
+		-> (bool, usize)
 	{
 		use std::ascii::AsciiExt;
+		self.expect_char(Dump, 'r');
+		let count_pounds = self.consume_counted(Dump, |c| c == '#');
+		self.expect_char(Dump, '"');
 		let mut valid = true;
 		'outer: loop {
 			match self.peek() {
 				'"' => {
 					let old_len = self.name_buffer.len();
+					self.consume(Keep);
 					for _ in 0..count_pounds {
-						self.consume(Keep);
 						if self.peek() != '#' {
 							continue 'outer;
 						}
+						self.consume(Keep);
 					}
 					self.name_buffer.truncate(old_len); // deletes delimiter ("#*)
 					break;
@@ -626,29 +591,28 @@ impl<'ctx> Lexer<'ctx> {
 			}
 			self.consume(Keep);
 		}
-		valid
+		(valid, count_pounds)
 	}
 
-	fn scan_raw_string_literal(
-		&mut self,
-		char_encoding: CharEncoding
-	)
-		-> TokenAndSpan
-	{
+	fn scan_raw_string_literal(&mut self) -> TokenAndSpan {
 		use token::Token::Literal;
 		use token::LiteralToken::RawString;
-		use token::LiteralToken::RawByteString;
-		self.expect_char(Dump, 'r');
-		let count_pounds = self.consume_counted(Dump, |c| c == '#');
-		self.expect_char(Dump, '"');
-		if !self.scan_raw_string(count_pounds, char_encoding) {
+		let (valid, count_pounds) = self.scan_raw_string(Unicode);
+		if !valid {
 			// Error: invalid raw string literal
 		}
-		// self.expect_char(Dump, '"'); // already scanned from 'scan_raw_string' method!
-		match char_encoding {
-			Ascii => self.make(Literal(RawByteString(self.fetch_name(), count_pounds))),
-			Unicode => self.make(Literal(RawString(self.fetch_name(), count_pounds)))
+		self.make(Literal(RawString(self.fetch_name(), count_pounds)))
+	}
+
+	fn scan_raw_byte_string_literal(&mut self) -> TokenAndSpan {
+		use token::Token::Literal;
+		use token::LiteralToken::RawByteString;
+		self.expect_char(Dump, 'b');
+		let (valid, count_pounds) = self.scan_raw_string(Ascii);
+		if !valid {
+			// Error: invalid raw byte string literal
 		}
+		self.make(Literal(RawByteString(self.fetch_name(), count_pounds)))
 	}
 }
 
@@ -689,11 +653,11 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 			// /* Identifiers and keywords */
 			c if c.is_alpha() => match self.peek_3() {
 				('r', '"',  _ ) |
-				('r', '#',  _ ) => self.scan_raw_string_literal(Unicode),
-				('b', '\'', _ ) => self.scan_char_or_byte_literal(Ascii),
-				('b', '"',  _ ) => self.scan_string_literal(Ascii),
+				('r', '#',  _ ) => self.scan_raw_string_literal(),
+				('b', '\'', _ ) => self.scan_byte_literal(),
+				('b', '"',  _ ) => self.scan_byte_string_literal(),
 				('b', 'r', '"') |
-				('b', 'r', '#') => self.consume(Dump).scan_raw_string_literal(Ascii),
+				('b', 'r', '#') => self.scan_raw_byte_string_literal(),
 				_               => self.scan_identifier()
 			},
 
@@ -811,7 +775,7 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 
 			/* Char and string literals */
 			'\'' => self.scan_char_literal(),
-			'"' => self.scan_string_literal(Unicode),
+			'"' => self.scan_string_literal(),
 
 			/* When end of iterator has been reached */
 			_ => self.make(EndOfFile)
@@ -1395,6 +1359,60 @@ mod tests {
 			(Identifier(name_11),       (52, 52)),
 			(BinOp(Minus),              (53, 53)),
 			(Literal(Integer(name_12)), (54, 55)),
+		]);
+	}
+
+	#[test]
+	fn simple_string_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{String};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r###" "Hello, World!" "\"" "'" "\n\t\x7F\u{1337}" "###);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
+		let name_1  = sc.borrow_mut().intern(r#"\""#);
+		let name_2  = sc.borrow_mut().intern(r"'");
+		let name_3  = sc.borrow_mut().intern(r"\n\t\x7F\u{1337}");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,              ( 0,  0)),
+			(Literal(String(name_0)), ( 1, 15)),
+			(Whitespace,              (16, 16)),
+			(Literal(String(name_1)), (17, 20)),
+			(Whitespace,              (21, 21)),
+			(Literal(String(name_2)), (22, 24)),
+			(Whitespace,              (25, 25)),
+			(Literal(String(name_3)), (26, 43)),
+			(Whitespace,              (44, 44)),
+		]);
+	}
+
+	#[test]
+	fn simple_raw_string_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{RawString};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r###" r"Hello, World!" r##"\""## r#"'"# r"\n\t\x7F\u{0F0F0}" "###);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
+		let name_1  = sc.borrow_mut().intern(r#"\""#);
+		let name_2  = sc.borrow_mut().intern(r"'");
+		let name_3  = sc.borrow_mut().intern(r"\n\t\x7F\u{0F0F0}");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                    ( 0,  0)),
+			(Literal(RawString(name_0, 0)), ( 1, 16)),
+			(Whitespace,                    (17, 17)),
+			(Literal(RawString(name_1, 2)), (18, 26)),
+			(Whitespace,                    (27, 27)),
+			(Literal(RawString(name_2, 1)), (28, 33)),
+			(Whitespace,                    (34, 34)),
+			(Literal(RawString(name_3, 0)), (35, 54)),
+			(Whitespace,                    (55, 55)),
 		]);
 	}
 }
