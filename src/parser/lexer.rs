@@ -203,16 +203,23 @@ impl<'ctx> Lexer<'ctx> {
 	}
 
 	fn scan_multi_line_comment(&mut self) -> TokenAndSpan {
-		use token::Token::{Comment, Error};
+		use token::Token::{Comment};
 		self.expect_char(Dump, '/');
 		self.expect_char(Dump, '*');
-		loop {
+		'outer: loop {
 			match self.peek_2() {
-				('*', '/') => return self.consume_n(Dump, 2).make(Comment),
-				('\0', _ ) => return self.make(Error),
+				('*', '/') => {
+					self.consume_n(Dump, 2);
+					break 'outer;
+				},
+				('\0', _ ) => {
+					// Error: unterminated multi line comment
+					break 'outer;
+				},
 				_ => self.consume(Dump)
 			};
 		}
+		self.make(Comment)
 	}
 
 	fn scan_identifier(&mut self) -> TokenAndSpan {
@@ -498,14 +505,19 @@ impl<'ctx> Lexer<'ctx> {
 		valid
 	}
 
+	fn scan_char_or_byte_delim(&mut self, char_encoding: CharEncoding) -> bool {
+		self.expect_char(Dump, '\'');
+		let valid = self.scan_char_or_byte(char_encoding, '\'');
+		self.expect_char(Dump, '\'');
+		valid
+	}
+
 	fn scan_char_literal(&mut self) -> TokenAndSpan {
 		use token::Token::Literal;
 		use token::LiteralToken::Char;
-		self.expect_char(Dump, '\'');
-		if !self.scan_char_or_byte(Unicode, '\'') {
-			// Error: invalid char or byte literal
+		if !self.scan_char_or_byte_delim(Unicode) {
+			// Error: invalid char literal
 		}
-		self.expect_char(Dump, '\'');
 		self.make(Literal(Char(self.fetch_name())))
 	}
 
@@ -513,11 +525,9 @@ impl<'ctx> Lexer<'ctx> {
 		use token::Token::Literal;
 		use token::LiteralToken::Byte;
 		self.expect_char(Dump, 'b');
-		self.expect_char(Dump, '\'');
-		if !self.scan_char_or_byte(Ascii, '\'') {
-			// Error: invalid char or byte literal
+		if !self.scan_char_or_byte_delim(Ascii) {
+			// Error: invalid byte literal
 		}
-		self.expect_char(Dump, '\'');
 		self.make(Literal(Byte(self.fetch_name())))
 	}
 
@@ -647,9 +657,6 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 				self.make(Whitespace)
 			},
 
-			/* Integer- and float literals and identifiers */
-			c if c.is_decimal_numeral() => self.scan_number_literal(),
-
 			// /* Identifiers and keywords */
 			c if c.is_alpha() => match self.peek_3() {
 				('r', '"',  _ ) |
@@ -660,6 +667,9 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 				('b', 'r', '#') => self.scan_raw_byte_string_literal(),
 				_               => self.scan_identifier()
 			},
+
+			/* Integer- and float literals and identifiers */
+			c if c.is_decimal_numeral() => self.scan_number_literal(),
 
 			/* Opening delimiters */
 			'(' => self.consume(Dump).make(OpenDelim(Paren)),
@@ -1080,6 +1090,54 @@ mod tests {
 	}
 
 	#[test]
+	fn simple_byte_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Char;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_a         = sc.borrow_mut().intern("a");
+		let name_z         = sc.borrow_mut().intern("Z");
+		let name_dbl_quote = sc.borrow_mut().intern("\"");
+		let name_space     = sc.borrow_mut().intern(" ");
+		let name_tab       = sc.borrow_mut().intern(r"\t");
+		let name_carry_ret = sc.borrow_mut().intern(r"\r");
+		let name_linefeed  = sc.borrow_mut().intern(r"\n");
+		let name_colon     = sc.borrow_mut().intern(":");
+		let name_null      = sc.borrow_mut().intern(r"\0");
+		let name_backslash = sc.borrow_mut().intern(r"\\");
+		let name_quote     = sc.borrow_mut().intern(r"\'");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                    ( 0,  0)),
+			(Literal(Char(name_a)),         ( 1,  3)),
+			(Whitespace,                    ( 4,  4)),
+			(Literal(Char(name_z)),         ( 5,  7)),
+			(Whitespace,                    ( 8,  8)),
+			(Literal(Char(name_dbl_quote)), ( 9, 11)),
+			(Whitespace,                    (12, 12)),
+			(Literal(Char(name_space)),     (13, 15)),
+			(Whitespace,                    (16, 16)),
+			(Literal(Char(name_tab)),       (17, 20)),
+			(Whitespace,                    (21, 21)),
+			(Literal(Char(name_carry_ret)), (22, 25)),
+			(Whitespace,                    (26, 26)),
+			(Literal(Char(name_linefeed)),  (27, 30)),
+			(Whitespace,                    (31, 31)),
+			(Literal(Char(name_colon)),     (32, 34)),
+			(Whitespace,                    (35, 35)),
+			(Literal(Char(name_null)),      (36, 39)),
+			(Whitespace,                    (40, 40)),
+			(Literal(Char(name_backslash)), (41, 44)),
+			(Whitespace,                    (45, 45)),
+			(Literal(Char(name_quote)),     (46, 49)),
+			(Whitespace,                    (50, 50))
+		]);
+	}
+
+	#[test]
 	#[allow(non_snake_case)]
 	fn char_ascii_escape_literal() {
 		use token::Token::{Literal, Whitespace};
@@ -1390,6 +1448,33 @@ mod tests {
 	}
 
 	#[test]
+	fn simple_byte_string_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{ByteString};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r###" b"Hello, World!" b"\"" b"'" b"\n\t\x7F\u{42}" "###);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
+		let name_1  = sc.borrow_mut().intern(r#"\""#);
+		let name_2  = sc.borrow_mut().intern(r"'");
+		let name_3  = sc.borrow_mut().intern(r"\n\t\x7F\u{42}");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                  ( 0,  0)),
+			(Literal(ByteString(name_0)), ( 1, 16)),
+			(Whitespace,                  (17, 17)),
+			(Literal(ByteString(name_1)), (18, 22)),
+			(Whitespace,                  (23, 23)),
+			(Literal(ByteString(name_2)), (24, 27)),
+			(Whitespace,                  (28, 28)),
+			(Literal(ByteString(name_3)), (29, 45)),
+			(Whitespace,                  (46, 46)),
+		]);
+	}
+
+	#[test]
 	fn simple_raw_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{RawString};
@@ -1413,6 +1498,33 @@ mod tests {
 			(Whitespace,                    (34, 34)),
 			(Literal(RawString(name_3, 0)), (35, 54)),
 			(Whitespace,                    (55, 55)),
+		]);
+	}
+
+	#[test]
+	fn simple_raw_byte_string_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{RawByteString};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r###" br"Hello, World!" br##"\""## br#"'"# br"\n\t\x7F\u{0F0F0F}" "###);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
+		let name_1  = sc.borrow_mut().intern(r#"\""#);
+		let name_2  = sc.borrow_mut().intern(r"'");
+		let name_3  = sc.borrow_mut().intern(r"\n\t\x7F\u{0F0F0F}");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                        ( 0,  0)),
+			(Literal(RawByteString(name_0, 0)), ( 1, 17)),
+			(Whitespace,                        (18, 18)),
+			(Literal(RawByteString(name_1, 2)), (19, 28)),
+			(Whitespace,                        (29, 29)),
+			(Literal(RawByteString(name_2, 1)), (30, 36)),
+			(Whitespace,                        (37, 37)),
+			(Literal(RawByteString(name_3, 0)), (38, 59)),
+			(Whitespace,                        (60, 60)),
 		]);
 	}
 }

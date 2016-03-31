@@ -100,7 +100,4 @@ pub enum Token {
 
     /* End of file (EOF) token indicating the end of stream for parsing */
     EndOfFile,
-
-    /* Token indicating that an errornous sequence has been found */
-    Error,
 }
