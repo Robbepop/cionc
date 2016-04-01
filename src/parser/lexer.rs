@@ -829,7 +829,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_tokens() {
+	fn single_byte_tokens() {
 		use token::Token::*;
 		use token::DelimitToken::*;
 		let ctx = CompileContext::default();
@@ -850,7 +850,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_comments() {
+	fn comments() {
 		use token::Token::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
@@ -981,7 +981,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_whitespace() {
+	fn whitespace() {
 		use token::Token::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
@@ -1042,7 +1042,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_char_literal() {
+	fn char_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Char;
 		let ctx = CompileContext::default();
@@ -1090,13 +1090,13 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_byte_literal() {
+	fn byte_literal() {
 		use token::Token::{Literal, Whitespace};
-		use token::LiteralToken::Char;
+		use token::LiteralToken::Byte;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
-			r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
+			r#" b'a' b'Z' b'"' b' ' b'\t' b'\r' b'\n' b':' b'\0' b'\\' b'\'' "#);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
 		let sc = &ctx.string_cache;
 		let name_a         = sc.borrow_mut().intern("a");
@@ -1112,28 +1112,28 @@ mod tests {
 		let name_quote     = sc.borrow_mut().intern(r"\'");
 		check_lexer_output_against(&mut lexer, &[
 			(Whitespace,                    ( 0,  0)),
-			(Literal(Char(name_a)),         ( 1,  3)),
-			(Whitespace,                    ( 4,  4)),
-			(Literal(Char(name_z)),         ( 5,  7)),
-			(Whitespace,                    ( 8,  8)),
-			(Literal(Char(name_dbl_quote)), ( 9, 11)),
-			(Whitespace,                    (12, 12)),
-			(Literal(Char(name_space)),     (13, 15)),
-			(Whitespace,                    (16, 16)),
-			(Literal(Char(name_tab)),       (17, 20)),
-			(Whitespace,                    (21, 21)),
-			(Literal(Char(name_carry_ret)), (22, 25)),
+			(Literal(Byte(name_a)),         ( 1,  4)),
+			(Whitespace,                    ( 5,  5)),
+			(Literal(Byte(name_z)),         ( 6,  9)),
+			(Whitespace,                    (10, 10)),
+			(Literal(Byte(name_dbl_quote)), (11, 14)),
+			(Whitespace,                    (15, 15)),
+			(Literal(Byte(name_space)),     (16, 19)),
+			(Whitespace,                    (20, 20)),
+			(Literal(Byte(name_tab)),       (21, 25)),
 			(Whitespace,                    (26, 26)),
-			(Literal(Char(name_linefeed)),  (27, 30)),
-			(Whitespace,                    (31, 31)),
-			(Literal(Char(name_colon)),     (32, 34)),
-			(Whitespace,                    (35, 35)),
-			(Literal(Char(name_null)),      (36, 39)),
-			(Whitespace,                    (40, 40)),
-			(Literal(Char(name_backslash)), (41, 44)),
-			(Whitespace,                    (45, 45)),
-			(Literal(Char(name_quote)),     (46, 49)),
-			(Whitespace,                    (50, 50))
+			(Literal(Byte(name_carry_ret)), (27, 31)),
+			(Whitespace,                    (32, 32)),
+			(Literal(Byte(name_linefeed)),  (33, 37)),
+			(Whitespace,                    (38, 38)),
+			(Literal(Byte(name_colon)),     (39, 42)),
+			(Whitespace,                    (43, 43)),
+			(Literal(Byte(name_null)),      (44, 48)),
+			(Whitespace,                    (49, 49)),
+			(Literal(Byte(name_backslash)), (50, 54)),
+			(Whitespace,                    (55, 55)),
+			(Literal(Byte(name_quote)),     (56, 60)),
+			(Whitespace,                    (61, 61))
 		]);
 	}
 
@@ -1421,7 +1421,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_string_literal() {
+	fn string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{String};
 		let ctx = CompileContext::default();
@@ -1448,7 +1448,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_byte_string_literal() {
+	fn byte_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{ByteString};
 		let ctx = CompileContext::default();
@@ -1475,7 +1475,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_raw_string_literal() {
+	fn raw_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{RawString};
 		let ctx = CompileContext::default();
@@ -1502,7 +1502,7 @@ mod tests {
 	}
 
 	#[test]
-	fn simple_raw_byte_string_literal() {
+	fn raw_byte_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{RawByteString};
 		let ctx = CompileContext::default();
