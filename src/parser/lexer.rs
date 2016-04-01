@@ -7,9 +7,6 @@ use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 use util::char_util::CharProperties;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
-//
-// This implementation is still experimental!
-// Many things like scan_string_literal(...) are still missing or are not implemented at all.
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TokenAndSpan {
@@ -185,7 +182,6 @@ impl<'ctx> Lexer<'ctx> {
 
 	fn fetch_name(&self) -> Name {
 		assert_eq!(self.name_buffer.is_empty(), false);
-		println!("name_buffer = {}", &self.name_buffer);
 		self.context.string_cache.borrow_mut().intern(&self.name_buffer)
 	}
 
@@ -397,7 +393,7 @@ impl<'ctx> Lexer<'ctx> {
  	// String scanning routines
  	//==================================================================
 
-	fn scan_char_ascii_hexcode2(&mut self) -> bool {
+	fn scan_char_ascii_hexcode(&mut self) -> bool {
 		self.expect_char(Keep, 'x');
 		let (count_digits, accumulated) =
 			self.scan_digits_accumulated(16, 16, Contiguous);
@@ -412,7 +408,7 @@ impl<'ctx> Lexer<'ctx> {
 		true
 	}
 
-	fn scan_char_unicode2(&mut self, char_encoding: CharEncoding) -> bool {
+	fn scan_char_unicode(&mut self, char_encoding: CharEncoding) -> bool {
 		use std::char;
 		use std::ascii::AsciiExt;
 		self.expect_char(Keep, 'u');
@@ -452,32 +448,35 @@ impl<'ctx> Lexer<'ctx> {
     	-> bool
     {
     	self.expect_char(Keep, '\\');
+    	let peek_2 = self.peek_2();
 		match self.peek() {
 			'0'  | /* Null */
 			'n'  | /* LineFeed */
 			'r'  | /* CarryReturn */
 			't'  | /* Tab */
-			'\\'   /* BackSlash */
-			     => self.consume(Keep),
-			'\'' => { /* Single-Quote */
-				if delim != '\'' {
-					// Error: can use escaped single-quote [\'] only in char or byte literals
-				}
-				self.consume(Keep)
+			'\\'   /* BackSlash */ => {
+				self.consume(Keep);
 			},
-			'"'  => { /* Double-Quote */
-				if delim != '"' {
-					// Error: can use escaped double-quote [\"] only in string literals
-				}
-				self.consume(Keep)
-			}
-			'x'  => return self.scan_char_ascii_hexcode2(),
-			'u'  => return self.scan_char_unicode2(char_encoding),
-			_    => {
+			'x'  => return self.scan_char_ascii_hexcode(),
+			'u'  => return self.scan_char_unicode(char_encoding),
+			// },
+			'\n' if delim == '"' => {
+				self.consume_while(Keep, |c| c.is_whitespace());
+			},
+			'\r' if delim == '"' && peek_2 == ('\r','\n') => {
+				self.consume_while(Keep, |c| c.is_whitespace());
+			},
+			'\'' if delim == '\'' => { /* Single-Quote */
+				self.consume(Keep);
+			},
+			'"' if delim == '"' => { /* Double-Quote */
+				self.consume(Keep);
+			},
+			_ => {
 				// Error: unknown escape sequence!
 				return false;
 			}
-		};
+		}
 		true
     }
 
@@ -493,6 +492,10 @@ impl<'ctx> Lexer<'ctx> {
 		match self.peek() {
 			'\\' => {
 				self.scan_char_or_byte_escape(char_encoding, delim);
+			},
+			'\0' => {
+				// Error: invalid \0 character in char or byte sequence
+				valid = false;
 			},
 			c => {
 				if char_encoding == Ascii && !c.is_ascii() {
@@ -534,7 +537,7 @@ impl<'ctx> Lexer<'ctx> {
 	fn scan_string(&mut self, char_encoding: CharEncoding) -> bool {
 		self.expect_char(Dump, '"');
 		let mut valid = true;
-		while self.peek() != '"' {
+		while valid && self.peek() != '"' {
 			valid &= self.scan_char_or_byte(char_encoding, '"');
 		}
 		self.expect_char(Dump, '"');
@@ -822,7 +825,7 @@ mod tests {
 				sp: Span::from_usize(lo, hi)
 			};
 			let next = lexer.next();
-			println!("(next, tas) = ({:?}, {:?})", &next, &tas);
+			// println!("(next, tas) = ({:?}, {:?})", &next, &tas);
 			assert_eq!(/*lexer.next()*/next, Some(tas));
 		}
 		assert_eq!(lexer.next(), None);
@@ -1497,6 +1500,24 @@ mod tests {
 			(Whitespace,              (25, 25)),
 			(Literal(String(name_3)), (26, 43)),
 			(Whitespace,              (44, 44)),
+		]);
+	}
+
+	#[test]
+	fn string_literal_escape_whitespace() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{String};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r#" "Hello, \
+			     World!""#);
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0  = sc.borrow_mut().intern("Hello, \\\n\t\t\t     World!");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,              ( 0,  0)),
+			(Literal(String(name_0)), ( 1, 25)),
 		]);
 	}
 

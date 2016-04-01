@@ -78,7 +78,6 @@ mod tests {
 			'a','b','c','d','e','f',
 			'A','B','C','D','E','F'];
 		for c in characters {
-			println!("{}, ", c);
 			assert_eq!(c.is_digit(2), c.is_binary_numeral());
 			assert_eq!(c.is_digit(8), c.is_octal_numeral());
 			assert_eq!(c.is_digit(10), c.is_decimal_numeral());
