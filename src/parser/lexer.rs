@@ -1164,6 +1164,31 @@ mod tests {
 
 	#[test]
 	#[allow(non_snake_case)]
+	fn byte_ascii_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Byte;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" b'\x00' b'\x7F' b'\x09' ");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_00 = sc.borrow_mut().intern(r"\x00");
+		let name_7F = sc.borrow_mut().intern(r"\x7F");
+		let name_09 = sc.borrow_mut().intern(r"\x09");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,             ( 0,  0)),
+			(Literal(Byte(name_00)), ( 1,  7)),
+			(Whitespace,             ( 8,  8)),
+			(Literal(Byte(name_7F)), ( 9, 15)),
+			(Whitespace,             (16, 16)),
+			(Literal(Byte(name_09)), (17, 23)),
+			(Whitespace,             (24, 24)),
+		]);
+	}
+
+	#[test]
+	#[allow(non_snake_case)]
 	fn char_unicode_escape_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Char;
@@ -1187,6 +1212,34 @@ mod tests {
 			(Whitespace,                 (32, 32)),
 			(Literal(Char(name_100000)), (33, 44)),
 			(Whitespace,                 (45, 45)),
+		]);
+	}
+
+	#[test]
+	#[allow(non_snake_case)]
+	fn byte_unicode_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Byte;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" b'\u{0}' b'\u{000001}' b'\u{7F}' b'\u{42}' ");
+		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let sc = &ctx.string_cache;
+		let name_0 = sc.borrow_mut().intern(r"\u{0}");
+		let name_1 = sc.borrow_mut().intern(r"\u{000001}");
+		let name_2 = sc.borrow_mut().intern(r"\u{7F}");
+		let name_3 = sc.borrow_mut().intern(r"\u{42}");
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,            ( 0,  0)),
+			(Literal(Byte(name_0)), ( 1,  8)),
+			(Whitespace,            ( 9,  9)),
+			(Literal(Byte(name_1)), (10, 22)),
+			(Whitespace,            (23, 23)),
+			(Literal(Byte(name_2)), (24, 32)),
+			(Whitespace,            (33, 33)),
+			(Literal(Byte(name_3)), (34, 42)),
+			(Whitespace,            (43, 43)),
 		]);
 	}
 
