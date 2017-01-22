@@ -12,6 +12,6 @@ use code_map::CodeMap;
 
 #[derive(Default)]
 pub struct CompileContext {
-	pub string_cache: RefCell<StringCache>,
+	pub symbol_table: RefCell<StringCache>,
 	pub code_map: RefCell<CodeMap>
 }

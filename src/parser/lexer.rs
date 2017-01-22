@@ -182,7 +182,7 @@ impl<'ctx> Lexer<'ctx> {
 
 	fn fetch_name(&self) -> Name {
 		assert_eq!(self.name_buffer.is_empty(), false);
-		self.context.string_cache.borrow_mut().intern(&self.name_buffer)
+		self.context.symbol_table.borrow_mut().intern(&self.name_buffer)
 	}
 
  	//==================================================================
@@ -1016,7 +1016,7 @@ mod tests {
 			 with_N0m3r5 \
 			 j__u___5__T");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name1 = sc.borrow_mut().intern("true");
 		let name2 = sc.borrow_mut().intern("false");
 		let name3 = sc.borrow_mut().intern("alphanumeric");
@@ -1053,7 +1053,7 @@ mod tests {
 			"fm1",
 			r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_a         = sc.borrow_mut().intern("a");
 		let name_z         = sc.borrow_mut().intern("Z");
 		let name_dbl_quote = sc.borrow_mut().intern("\"");
@@ -1101,7 +1101,7 @@ mod tests {
 			"fm1",
 			r#" b'a' b'Z' b'"' b' ' b'\t' b'\r' b'\n' b':' b'\0' b'\\' b'\'' "#);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_a         = sc.borrow_mut().intern("a");
 		let name_z         = sc.borrow_mut().intern("Z");
 		let name_dbl_quote = sc.borrow_mut().intern("\"");
@@ -1150,7 +1150,7 @@ mod tests {
 			"fm1",
 			r" '\x00' '\x7F' '\x09' ");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_00 = sc.borrow_mut().intern(r"\x00");
 		let name_7F = sc.borrow_mut().intern(r"\x7F");
 		let name_09 = sc.borrow_mut().intern(r"\x09");
@@ -1175,7 +1175,7 @@ mod tests {
 			"fm1",
 			r" b'\x00' b'\x7F' b'\x09' ");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_00 = sc.borrow_mut().intern(r"\x00");
 		let name_7F = sc.borrow_mut().intern(r"\x7F");
 		let name_09 = sc.borrow_mut().intern(r"\x09");
@@ -1200,7 +1200,7 @@ mod tests {
 			"fm1",
 			r" '\u{0}' '\u{1337}' '\u{0FFFFF}' '\u{100000}' ");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0      = sc.borrow_mut().intern(r"\u{0}");
 		let name_1337   = sc.borrow_mut().intern(r"\u{1337}");
 		let name_0FFFFF = sc.borrow_mut().intern(r"\u{0FFFFF}");
@@ -1228,7 +1228,7 @@ mod tests {
 			"fm1",
 			r" b'\u{0}' b'\u{000001}' b'\u{7F}' b'\u{42}' ");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0 = sc.borrow_mut().intern(r"\u{0}");
 		let name_1 = sc.borrow_mut().intern(r"\u{000001}");
 		let name_2 = sc.borrow_mut().intern(r"\u{7F}");
@@ -1256,7 +1256,7 @@ mod tests {
 			"fm1",
 			"0 42 1337 1_234_567_890 007 1__");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0             = sc.borrow_mut().intern(r"0");
 		let name_42            = sc.borrow_mut().intern(r"42");
 		let name_1337          = sc.borrow_mut().intern(r"1337");
@@ -1288,7 +1288,7 @@ mod tests {
 			"fm1",
 			"0b0 0b1 0b0__ 0b__1 0b11____11 0b_0000_0101_1111");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0               = sc.borrow_mut().intern(r"0b0");
 		let name_1               = sc.borrow_mut().intern(r"0b1");
 		let name_0__             = sc.borrow_mut().intern(r"0b0__");
@@ -1320,7 +1320,7 @@ mod tests {
 			"fm1",
 			"0o0 0o1 0o0__ 0o__7 0o42____51 0o_123_456_777");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0            = sc.borrow_mut().intern(r"0o0");
 		let name_1            = sc.borrow_mut().intern(r"0o1");
 		let name_0__          = sc.borrow_mut().intern(r"0o0__");
@@ -1351,7 +1351,7 @@ mod tests {
 			"fm1",
 			"0x0 0xF 0x0__ 0x__A 0xA9____B2 0x_0123_4567_89AB_CDEF");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0 = sc.borrow_mut().intern(r"0x0");
 		let name_1 = sc.borrow_mut().intern(r"0xF");
 		let name_2 = sc.borrow_mut().intern(r"0x0__");
@@ -1389,7 +1389,7 @@ mod tests {
 			 0.01e-07  \
 			 1_.1_     ");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0 = sc.borrow_mut().intern(r"0.0");
 		let name_1 = sc.borrow_mut().intern(r"42.0");
 		let name_2 = sc.borrow_mut().intern(r"0.24");
@@ -1429,7 +1429,7 @@ mod tests {
 			"fm1",
 			"17.foo() 0xABC.exp() 0b110..0o736 0..9 1.23..45.6 5.e-12");
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern(r"17");
 		let name_1  = sc.borrow_mut().intern(r"foo");
 		let name_2  = sc.borrow_mut().intern(r"0xABC");
@@ -1485,7 +1485,7 @@ mod tests {
 			"fm1",
 			r###" "Hello, World!" "\"" "'" "\n\t\x7F\u{1337}" "###);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
 		let name_1  = sc.borrow_mut().intern(r#"\""#);
 		let name_2  = sc.borrow_mut().intern(r"'");
@@ -1513,7 +1513,7 @@ mod tests {
 			r#" "Hello, \
 			     World!""#);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern("Hello, \\\n\t\t\t     World!");
 		check_lexer_output_against(&mut lexer, &[
 			(Whitespace,              ( 0,  0)),
@@ -1530,7 +1530,7 @@ mod tests {
 			"fm1",
 			r###" b"Hello, World!" b"\"" b"'" b"\n\t\x7F\u{42}" "###);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
 		let name_1  = sc.borrow_mut().intern(r#"\""#);
 		let name_2  = sc.borrow_mut().intern(r"'");
@@ -1557,7 +1557,7 @@ mod tests {
 			"fm1",
 			r###" r"Hello, World!" r##"\""## r#"'"# r"\n\t\x7F\u{0F0F0}" "###);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
 		let name_1  = sc.borrow_mut().intern(r#"\""#);
 		let name_2  = sc.borrow_mut().intern(r"'");
@@ -1584,7 +1584,7 @@ mod tests {
 			"fm1",
 			r###" br"Hello, World!" br##"\""## br#"'"# br"\n\t\x7F\u{0F0F0F}" "###);
 		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.string_cache;
+		let sc = &ctx.symbol_table;
 		let name_0  = sc.borrow_mut().intern(r"Hello, World!");
 		let name_1  = sc.borrow_mut().intern(r#"\""#);
 		let name_2  = sc.borrow_mut().intern(r"'");
