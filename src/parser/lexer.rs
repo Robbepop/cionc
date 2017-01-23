@@ -1139,386 +1139,378 @@ mod tests {
 		]);
 	}
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn char_ascii_escape_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Char;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r" '\x00' '\x7F' '\x09' ");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_00 = sc.borrow_mut().intern(r"\x00");
-	// 	let name_7F = sc.borrow_mut().intern(r"\x7F");
-	// 	let name_09 = sc.borrow_mut().intern(r"\x09");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,             ( 0,  0)),
-	// 		(Literal(Char(name_00)), ( 1,  6)),
-	// 		(Whitespace,             ( 7,  7)),
-	// 		(Literal(Char(name_7F)), ( 8, 13)),
-	// 		(Whitespace,             (14, 14)),
-	// 		(Literal(Char(name_09)), (15, 20)),
-	// 		(Whitespace,             (21, 21)),
-	// 	]);
-	// }
+	#[test]
+	fn char_ascii_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Char;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" '\x00' '\x7F' '\x09' ");
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn byte_ascii_escape_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Byte;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r" b'\x00' b'\x7F' b'\x09' ");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_00 = sc.borrow_mut().intern(r"\x00");
-	// 	let name_7F = sc.borrow_mut().intern(r"\x7F");
-	// 	let name_09 = sc.borrow_mut().intern(r"\x09");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,             ( 0,  0)),
-	// 		(Literal(Byte(name_00)), ( 1,  7)),
-	// 		(Whitespace,             ( 8,  8)),
-	// 		(Literal(Byte(name_7F)), ( 9, 15)),
-	// 		(Whitespace,             (16, 16)),
-	// 		(Literal(Byte(name_09)), (17, 23)),
-	// 		(Whitespace,             (24, 24)),
-	// 	]);
-	// }
+		let name_00 = ctx.symbol_table.borrow_mut().intern(r"\x00");
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn char_unicode_escape_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Char;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r" '\u{0}' '\u{1337}' '\u{0FFFFF}' '\u{100000}' ");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0      = sc.borrow_mut().intern(r"\u{0}");
-	// 	let name_1337   = sc.borrow_mut().intern(r"\u{1337}");
-	// 	let name_0FFFFF = sc.borrow_mut().intern(r"\u{0FFFFF}");
-	// 	let name_100000 = sc.borrow_mut().intern(r"\u{100000}");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,                 ( 0,  0)),
-	// 		(Literal(Char(name_0     )), ( 1,  7)),
-	// 		(Whitespace,                 ( 8,  8)),
-	// 		(Literal(Char(name_1337  )), ( 9, 18)),
-	// 		(Whitespace,                 (19, 19)),
-	// 		(Literal(Char(name_0FFFFF)), (20, 31)),
-	// 		(Whitespace,                 (32, 32)),
-	// 		(Literal(Char(name_100000)), (33, 44)),
-	// 		(Whitespace,                 (45, 45)),
-	// 	]);
-	// }
+		#[allow(non_snake_case)]
+		let name_7F = ctx.symbol_table.borrow_mut().intern(r"\x7F");
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn byte_unicode_escape_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Byte;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r" b'\u{0}' b'\u{000001}' b'\u{7F}' b'\u{42}' ");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0 = sc.borrow_mut().intern(r"\u{0}");
-	// 	let name_1 = sc.borrow_mut().intern(r"\u{000001}");
-	// 	let name_2 = sc.borrow_mut().intern(r"\u{7F}");
-	// 	let name_3 = sc.borrow_mut().intern(r"\u{42}");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,            ( 0,  0)),
-	// 		(Literal(Byte(name_0)), ( 1,  8)),
-	// 		(Whitespace,            ( 9,  9)),
-	// 		(Literal(Byte(name_1)), (10, 22)),
-	// 		(Whitespace,            (23, 23)),
-	// 		(Literal(Byte(name_2)), (24, 32)),
-	// 		(Whitespace,            (33, 33)),
-	// 		(Literal(Byte(name_3)), (34, 42)),
-	// 		(Whitespace,            (43, 43)),
-	// 	]);
-	// }
+		#[allow(non_snake_case)]
+		let name_09 = ctx.symbol_table.borrow_mut().intern(r"\x09");
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn decimal_integer_literals() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Integer;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"0 42 1337 1_234_567_890 007 1__");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0             = sc.borrow_mut().intern(r"0");
-	// 	let name_42            = sc.borrow_mut().intern(r"42");
-	// 	let name_1337          = sc.borrow_mut().intern(r"1337");
-	// 	let name_1_234_567_890 = sc.borrow_mut().intern(r"1_234_567_890");
-	// 	let name_007           = sc.borrow_mut().intern(r"007");
-	// 	let name_1__           = sc.borrow_mut().intern(r"1__");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Integer(name_0)),    ( 0,  0)),
-	// 		(Whitespace,                  ( 1,  1)),
-	// 		(Literal(Integer(name_42)),   ( 2,  3)),
-	// 		(Whitespace,                  ( 4,  4)),
-	// 		(Literal(Integer(name_1337)), ( 5,  8)),
-	// 		(Whitespace,                  ( 9,  9)),
-	// 		(Literal(Integer(name_1_234_567_890)), (10, 22)),
-	// 		(Whitespace,                  (23, 23)),
-	// 		(Literal(Integer(name_007)),  (24, 26)),
-	// 		(Whitespace,                  (27, 27)),
-	// 		(Literal(Integer(name_1__)),  (28, 30)),
-	// 	]);
-	// }
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,             ( 0,  0)),
+			(Literal(Char(name_00)), ( 1,  6)),
+			(Whitespace,             ( 7,  7)),
+			(Literal(Char(name_7F)), ( 8, 13)),
+			(Whitespace,             (14, 14)),
+			(Literal(Char(name_09)), (15, 20)),
+			(Whitespace,             (21, 21)),
+		]);
+	}
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn binary_integer_literals() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Integer;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"0b0 0b1 0b0__ 0b__1 0b11____11 0b_0000_0101_1111");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0               = sc.borrow_mut().intern(r"0b0");
-	// 	let name_1               = sc.borrow_mut().intern(r"0b1");
-	// 	let name_0__             = sc.borrow_mut().intern(r"0b0__");
-	// 	let name___1             = sc.borrow_mut().intern(r"0b__1");
-	// 	let name_11__11          = sc.borrow_mut().intern(r"0b11____11");
-	// 	let name__0000_0101_1111 = sc.borrow_mut().intern(r"0b_0000_0101_1111");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Integer(name_0)),      ( 0,  2)),
-	// 		(Whitespace,                    ( 3,  3)),
-	// 		(Literal(Integer(name_1)),      ( 4,  6)),
-	// 		(Whitespace,                    ( 7,  7)),
-	// 		(Literal(Integer(name_0__)),    ( 8, 12)),
-	// 		(Whitespace,                    (13, 13)),
-	// 		(Literal(Integer(name___1)),    (14, 18)),
-	// 		(Whitespace,                    (19, 19)),
-	// 		(Literal(Integer(name_11__11)), (20, 29)),
-	// 		(Whitespace,                    (30, 30)),
-	// 		(Literal(Integer(name__0000_0101_1111)), (31, 47)),
-	// 	]);
-	// }
+	#[test]
+	fn byte_ascii_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Byte;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" b'\x00' b'\x7F' b'\x09' ");
+		let name_00 = ctx.symbol_table.borrow_mut().intern(r"\x00");
+		#[allow(non_snake_case)]
+		let name_7F = ctx.symbol_table.borrow_mut().intern(r"\x7F");
+		let name_09 = ctx.symbol_table.borrow_mut().intern(r"\x09");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,             ( 0,  0)),
+			(Literal(Byte(name_00)), ( 1,  7)),
+			(Whitespace,             ( 8,  8)),
+			(Literal(Byte(name_7F)), ( 9, 15)),
+			(Whitespace,             (16, 16)),
+			(Literal(Byte(name_09)), (17, 23)),
+			(Whitespace,             (24, 24)),
+		]);
+	}
 
-	// #[test]
-	// #[allow(non_snake_case)]
-	// fn octal_integer_literals() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Integer;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"0o0 0o1 0o0__ 0o__7 0o42____51 0o_123_456_777");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0            = sc.borrow_mut().intern(r"0o0");
-	// 	let name_1            = sc.borrow_mut().intern(r"0o1");
-	// 	let name_0__          = sc.borrow_mut().intern(r"0o0__");
-	// 	let name___7          = sc.borrow_mut().intern(r"0o__7");
-	// 	let name_42__52       = sc.borrow_mut().intern(r"0o42____51");
-	// 	let name__123_456_777 = sc.borrow_mut().intern(r"0o_123_456_777");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Integer(name_0)),      ( 0,  2)),
-	// 		(Whitespace,                    ( 3,  3)),
-	// 		(Literal(Integer(name_1)),      ( 4,  6)),
-	// 		(Whitespace,                    ( 7,  7)),
-	// 		(Literal(Integer(name_0__)),    ( 8, 12)),
-	// 		(Whitespace,                    (13, 13)),
-	// 		(Literal(Integer(name___7)),    (14, 18)),
-	// 		(Whitespace,                    (19, 19)),
-	// 		(Literal(Integer(name_42__52)), (20, 29)),
-	// 		(Whitespace,                    (30, 30)),
-	// 		(Literal(Integer(name__123_456_777)), (31, 44)),
-	// 	]);
-	// }
+	#[test]
+	fn char_unicode_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Char;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" '\u{0}' '\u{1337}' '\u{0FFFFF}' '\u{100000}' ");
+		let name_0      = ctx.symbol_table.borrow_mut().intern(r"\u{0}");
+		let name_1337   = ctx.symbol_table.borrow_mut().intern(r"\u{1337}");
+		#[allow(non_snake_case)]
+		let name_0FFFFF = ctx.symbol_table.borrow_mut().intern(r"\u{0FFFFF}");
+		let name_100000 = ctx.symbol_table.borrow_mut().intern(r"\u{100000}");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                 ( 0,  0)),
+			(Literal(Char(name_0     )), ( 1,  7)),
+			(Whitespace,                 ( 8,  8)),
+			(Literal(Char(name_1337  )), ( 9, 18)),
+			(Whitespace,                 (19, 19)),
+			(Literal(Char(name_0FFFFF)), (20, 31)),
+			(Whitespace,                 (32, 32)),
+			(Literal(Char(name_100000)), (33, 44)),
+			(Whitespace,                 (45, 45)),
+		]);
+	}
 
-	// #[test]
-	// fn hexdec_integer_literals() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Integer;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"0x0 0xF 0x0__ 0x__A 0xA9____B2 0x_0123_4567_89AB_CDEF");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0 = sc.borrow_mut().intern(r"0x0");
-	// 	let name_1 = sc.borrow_mut().intern(r"0xF");
-	// 	let name_2 = sc.borrow_mut().intern(r"0x0__");
-	// 	let name_3 = sc.borrow_mut().intern(r"0x__A");
-	// 	let name_4 = sc.borrow_mut().intern(r"0xA9____B2");
-	// 	let name_5 = sc.borrow_mut().intern(r"0x_0123_4567_89AB_CDEF");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Integer(name_0)), ( 0,  2)),
-	// 		(Whitespace,               ( 3,  3)),
-	// 		(Literal(Integer(name_1)), ( 4,  6)),
-	// 		(Whitespace,               ( 7,  7)),
-	// 		(Literal(Integer(name_2)), ( 8, 12)),
-	// 		(Whitespace,               (13, 13)),
-	// 		(Literal(Integer(name_3)), (14, 18)),
-	// 		(Whitespace,               (19, 19)),
-	// 		(Literal(Integer(name_4)), (20, 29)),
-	// 		(Whitespace,               (30, 30)),
-	// 		(Literal(Integer(name_5)), (31, 52)),
-	// 	]);
-	// }
+	#[test]
+	fn byte_unicode_escape_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Byte;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r" b'\u{0}' b'\u{000001}' b'\u{7F}' b'\u{42}' ");
+		let name_0 = ctx.symbol_table.borrow_mut().intern(r"\u{0}");
+		let name_1 = ctx.symbol_table.borrow_mut().intern(r"\u{000001}");
+		let name_2 = ctx.symbol_table.borrow_mut().intern(r"\u{7F}");
+		let name_3 = ctx.symbol_table.borrow_mut().intern(r"\u{42}");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,            ( 0,  0)),
+			(Literal(Byte(name_0)), ( 1,  8)),
+			(Whitespace,            ( 9,  9)),
+			(Literal(Byte(name_1)), (10, 22)),
+			(Whitespace,            (23, 23)),
+			(Literal(Byte(name_2)), (24, 32)),
+			(Whitespace,            (33, 33)),
+			(Literal(Byte(name_3)), (34, 42)),
+			(Whitespace,            (43, 43)),
+		]);
+	}
 
-	// #[test]
-	// fn float_literals() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Float;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"0.0       \
-	// 		 42.0      \
-	// 		 0.24      \
-	// 		 13.37     \
-	// 		 0.00_00_1 \
-	// 		 1.23e+12  \
-	// 		 0.01e-07  \
-	// 		 1_.1_     ");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0 = sc.borrow_mut().intern(r"0.0");
-	// 	let name_1 = sc.borrow_mut().intern(r"42.0");
-	// 	let name_2 = sc.borrow_mut().intern(r"0.24");
-	// 	let name_3 = sc.borrow_mut().intern(r"13.37");
-	// 	let name_4 = sc.borrow_mut().intern(r"0.00_00_1");
-	// 	let name_5 = sc.borrow_mut().intern(r"1.23e+12");
-	// 	let name_6 = sc.borrow_mut().intern(r"0.01e-07");
-	// 	let name_7 = sc.borrow_mut().intern(r"1_.1_");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Float(name_0)), ( 0,  2)),
-	// 		(Whitespace,             ( 3,  9)),
-	// 		(Literal(Float(name_1)), (10, 13)),
-	// 		(Whitespace,             (14, 19)),
-	// 		(Literal(Float(name_2)), (20, 23)),
-	// 		(Whitespace,             (24, 29)),
-	// 		(Literal(Float(name_3)), (30, 34)),
-	// 		(Whitespace,             (35, 39)),
-	// 		(Literal(Float(name_4)), (40, 48)),
-	// 		(Whitespace,             (49, 49)),
-	// 		(Literal(Float(name_5)), (50, 57)),
-	// 		(Whitespace,             (58, 59)),
-	// 		(Literal(Float(name_6)), (60, 67)),
-	// 		(Whitespace,             (68, 69)),
-	// 		(Literal(Float(name_7)), (70, 74)),
-	// 		(Whitespace,             (75, 79)),
-	// 	]);
-	// }
+	#[test]
+	fn decimal_integer_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Integer;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0 42 1337 1_234_567_890 007 1__");
+		let name_0             = ctx.symbol_table.borrow_mut().intern(r"0");
+		let name_42            = ctx.symbol_table.borrow_mut().intern(r"42");
+		let name_1337          = ctx.symbol_table.borrow_mut().intern(r"1337");
+		let name_1_234_567_890 = ctx.symbol_table.borrow_mut().intern(r"1_234_567_890");
+		let name_007           = ctx.symbol_table.borrow_mut().intern(r"007");
+		let name_1__           = ctx.symbol_table.borrow_mut().intern(r"1__");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(name_0)),    ( 0,  0)),
+			(Whitespace,                  ( 1,  1)),
+			(Literal(Integer(name_42)),   ( 2,  3)),
+			(Whitespace,                  ( 4,  4)),
+			(Literal(Integer(name_1337)), ( 5,  8)),
+			(Whitespace,                  ( 9,  9)),
+			(Literal(Integer(name_1_234_567_890)), (10, 22)),
+			(Whitespace,                  (23, 23)),
+			(Literal(Integer(name_007)),  (24, 26)),
+			(Whitespace,                  (27, 27)),
+			(Literal(Integer(name_1__)),  (28, 30)),
+		]);
+	}
 
-	// #[test]
-	// fn dot_after_number_sequence() {
-	// 	use token::Token::{BinOp, OpenDelim, CloseDelim, Identifier, Literal, Dot, DotDot, Whitespace};
-	// 	use token::LiteralToken::{Integer, Float};
-	// 	use token::BinOpToken::Minus;
-	// 	use token::DelimitToken::*;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		"17.foo() 0xABC.exp() 0b110..0o736 0..9 1.23..45.6 5.e-12");
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0  = sc.borrow_mut().intern(r"17");
-	// 	let name_1  = sc.borrow_mut().intern(r"foo");
-	// 	let name_2  = sc.borrow_mut().intern(r"0xABC");
-	// 	let name_3  = sc.borrow_mut().intern(r"exp");
-	// 	let name_4  = sc.borrow_mut().intern(r"0b110");
-	// 	let name_5  = sc.borrow_mut().intern(r"0o736");
-	// 	let name_6  = sc.borrow_mut().intern(r"0");
-	// 	let name_7  = sc.borrow_mut().intern(r"9");
-	// 	let name_8  = sc.borrow_mut().intern(r"1.23");
-	// 	let name_9  = sc.borrow_mut().intern(r"45.6");
-	// 	let name_10 = sc.borrow_mut().intern(r"5");
-	// 	let name_11 = sc.borrow_mut().intern(r"e");
-	// 	let name_12 = sc.borrow_mut().intern(r"12");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Literal(Integer(name_0)),  ( 0,  1)),
-	// 		(Dot,                       ( 2,  2)),
-	// 		(Identifier(name_1),        ( 3,  5)),
-	// 		(OpenDelim(Paren),          ( 6,  6)),
-	// 		(CloseDelim(Paren),         ( 7,  7)),
-	// 		(Whitespace,                ( 8,  8)),
-	// 		(Literal(Integer(name_2)),  ( 9, 13)),
-	// 		(Dot,                       (14, 14)),
-	// 		(Identifier(name_3),        (15, 17)),
-	// 		(OpenDelim(Paren),          (18, 18)),
-	// 		(CloseDelim(Paren),         (19, 19)),
-	// 		(Whitespace,                (20, 20)),
-	// 		(Literal(Integer(name_4)),  (21, 25)),
-	// 		(DotDot,                    (26, 27)),
-	// 		(Literal(Integer(name_5)),  (28, 32)),
-	// 		(Whitespace,                (33, 33)),
-	// 		(Literal(Integer(name_6)),  (34, 34)),
-	// 		(DotDot,                    (35, 36)),
-	// 		(Literal(Integer(name_7)),  (37, 37)),
-	// 		(Whitespace,                (38, 38)),
-	// 		(Literal(Float(name_8)),    (39, 42)),
-	// 		(DotDot,                    (43, 44)),
-	// 		(Literal(Float(name_9)),    (45, 48)),
-	// 		(Whitespace,                (49, 49)),
-	// 		(Literal(Integer(name_10)), (50, 50)),
-	// 		(Dot,                       (51, 51)),
-	// 		(Identifier(name_11),       (52, 52)),
-	// 		(BinOp(Minus),              (53, 53)),
-	// 		(Literal(Integer(name_12)), (54, 55)),
-	// 	]);
-	// }
+	#[test]
+	fn binary_integer_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Integer;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0b0 0b1 0b0__ 0b__1 0b11____11 0b_0000_0101_1111");
+		let name_0               = ctx.symbol_table.borrow_mut().intern(r"0b0");
+		let name_1               = ctx.symbol_table.borrow_mut().intern(r"0b1");
+		let name_0__             = ctx.symbol_table.borrow_mut().intern(r"0b0__");
+		let name___1             = ctx.symbol_table.borrow_mut().intern(r"0b__1");
+		let name_11__11          = ctx.symbol_table.borrow_mut().intern(r"0b11____11");
+		let name__0000_0101_1111 = ctx.symbol_table.borrow_mut().intern(r"0b_0000_0101_1111");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(name_0)),      ( 0,  2)),
+			(Whitespace,                    ( 3,  3)),
+			(Literal(Integer(name_1)),      ( 4,  6)),
+			(Whitespace,                    ( 7,  7)),
+			(Literal(Integer(name_0__)),    ( 8, 12)),
+			(Whitespace,                    (13, 13)),
+			(Literal(Integer(name___1)),    (14, 18)),
+			(Whitespace,                    (19, 19)),
+			(Literal(Integer(name_11__11)), (20, 29)),
+			(Whitespace,                    (30, 30)),
+			(Literal(Integer(name__0000_0101_1111)), (31, 47)),
+		]);
+	}
 
-	// #[test]
-	// fn string_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::{String};
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r###" "Hello, World!" "\"" "'" "\n\t\x7F\u{1337}" "###);
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0  = sc.borrow_mut().intern(r"Hello, World!");
-	// 	let name_1  = sc.borrow_mut().intern(r#"\""#);
-	// 	let name_2  = sc.borrow_mut().intern(r"'");
-	// 	let name_3  = sc.borrow_mut().intern(r"\n\t\x7F\u{1337}");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,              ( 0,  0)),
-	// 		(Literal(String(name_0)), ( 1, 15)),
-	// 		(Whitespace,              (16, 16)),
-	// 		(Literal(String(name_1)), (17, 20)),
-	// 		(Whitespace,              (21, 21)),
-	// 		(Literal(String(name_2)), (22, 24)),
-	// 		(Whitespace,              (25, 25)),
-	// 		(Literal(String(name_3)), (26, 43)),
-	// 		(Whitespace,              (44, 44)),
-	// 	]);
-	// }
+	#[test]
+	fn octal_integer_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Integer;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0o0 0o1 0o0__ 0o__7 0o42____51 0o_123_456_777");
+		let name_0            = ctx.symbol_table.borrow_mut().intern(r"0o0");
+		let name_1            = ctx.symbol_table.borrow_mut().intern(r"0o1");
+		let name_0__          = ctx.symbol_table.borrow_mut().intern(r"0o0__");
+		let name___7          = ctx.symbol_table.borrow_mut().intern(r"0o__7");
+		let name_42__52       = ctx.symbol_table.borrow_mut().intern(r"0o42____51");
+		let name__123_456_777 = ctx.symbol_table.borrow_mut().intern(r"0o_123_456_777");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(name_0)),      ( 0,  2)),
+			(Whitespace,                    ( 3,  3)),
+			(Literal(Integer(name_1)),      ( 4,  6)),
+			(Whitespace,                    ( 7,  7)),
+			(Literal(Integer(name_0__)),    ( 8, 12)),
+			(Whitespace,                    (13, 13)),
+			(Literal(Integer(name___7)),    (14, 18)),
+			(Whitespace,                    (19, 19)),
+			(Literal(Integer(name_42__52)), (20, 29)),
+			(Whitespace,                    (30, 30)),
+			(Literal(Integer(name__123_456_777)), (31, 44)),
+		]);
+	}
 
-	// #[test]
-	// fn string_literal_escape_whitespace() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::{String};
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r#" "Hello, \
-	// 		     World!""#);
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_0  = sc.borrow_mut().intern("Hello, \\\n\t\t\t     World!");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,              ( 0,  0)),
-	// 		(Literal(String(name_0)), ( 1, 25)),
-	// 	]);
-	// }
+	#[test]
+	fn hexdec_integer_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Integer;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0x0 0xF 0x0__ 0x__A 0xA9____B2 0x_0123_4567_89AB_CDEF");
+		let name_0 = ctx.symbol_table.borrow_mut().intern(r"0x0");
+		let name_1 = ctx.symbol_table.borrow_mut().intern(r"0xF");
+		let name_2 = ctx.symbol_table.borrow_mut().intern(r"0x0__");
+		let name_3 = ctx.symbol_table.borrow_mut().intern(r"0x__A");
+		let name_4 = ctx.symbol_table.borrow_mut().intern(r"0xA9____B2");
+		let name_5 = ctx.symbol_table.borrow_mut().intern(r"0x_0123_4567_89AB_CDEF");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(name_0)), ( 0,  2)),
+			(Whitespace,               ( 3,  3)),
+			(Literal(Integer(name_1)), ( 4,  6)),
+			(Whitespace,               ( 7,  7)),
+			(Literal(Integer(name_2)), ( 8, 12)),
+			(Whitespace,               (13, 13)),
+			(Literal(Integer(name_3)), (14, 18)),
+			(Whitespace,               (19, 19)),
+			(Literal(Integer(name_4)), (20, 29)),
+			(Whitespace,               (30, 30)),
+			(Literal(Integer(name_5)), (31, 52)),
+		]);
+	}
+
+	#[test]
+	fn float_literals() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Float;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"0.0       \
+			 42.0      \
+			 0.24      \
+			 13.37     \
+			 0.00_00_1 \
+			 1.23e+12  \
+			 0.01e-07  \
+			 1_.1_     ");
+		let name_0 = ctx.symbol_table.borrow_mut().intern(r"0.0");
+		let name_1 = ctx.symbol_table.borrow_mut().intern(r"42.0");
+		let name_2 = ctx.symbol_table.borrow_mut().intern(r"0.24");
+		let name_3 = ctx.symbol_table.borrow_mut().intern(r"13.37");
+		let name_4 = ctx.symbol_table.borrow_mut().intern(r"0.00_00_1");
+		let name_5 = ctx.symbol_table.borrow_mut().intern(r"1.23e+12");
+		let name_6 = ctx.symbol_table.borrow_mut().intern(r"0.01e-07");
+		let name_7 = ctx.symbol_table.borrow_mut().intern(r"1_.1_");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Float(name_0)), ( 0,  2)),
+			(Whitespace,             ( 3,  9)),
+			(Literal(Float(name_1)), (10, 13)),
+			(Whitespace,             (14, 19)),
+			(Literal(Float(name_2)), (20, 23)),
+			(Whitespace,             (24, 29)),
+			(Literal(Float(name_3)), (30, 34)),
+			(Whitespace,             (35, 39)),
+			(Literal(Float(name_4)), (40, 48)),
+			(Whitespace,             (49, 49)),
+			(Literal(Float(name_5)), (50, 57)),
+			(Whitespace,             (58, 59)),
+			(Literal(Float(name_6)), (60, 67)),
+			(Whitespace,             (68, 69)),
+			(Literal(Float(name_7)), (70, 74)),
+			(Whitespace,             (75, 79)),
+		]);
+	}
+
+	#[test]
+	fn dot_after_number_sequence() {
+		use token::Token::{BinOp, OpenDelim, CloseDelim, Identifier, Literal, Dot, DotDot, Whitespace};
+		use token::LiteralToken::{Integer, Float};
+		use token::BinOpToken::Minus;
+		use token::DelimitToken::*;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			"17.foo() 0xABC.exp() 0b110..0o736 0..9 1.23..45.6 5.e-12");
+		let names = ctx.symbol_table.borrow_mut().prefill(&[
+			r"17",
+			r"foo",
+			r"0xABC",
+			r"exp",
+			r"0b110",
+			r"0o736",
+			r"0",
+			r"9",
+			r"1.23",
+			r"45.6",
+			r"5",
+			r"e",
+			r"12",
+		]);
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Literal(Integer(names[0])),  ( 0,  1)),
+			(Dot,                       ( 2,  2)),
+			(Identifier(names[1]),        ( 3,  5)),
+			(OpenDelim(Paren),          ( 6,  6)),
+			(CloseDelim(Paren),         ( 7,  7)),
+			(Whitespace,                ( 8,  8)),
+			(Literal(Integer(names[2])),  ( 9, 13)),
+			(Dot,                       (14, 14)),
+			(Identifier(names[3]),        (15, 17)),
+			(OpenDelim(Paren),          (18, 18)),
+			(CloseDelim(Paren),         (19, 19)),
+			(Whitespace,                (20, 20)),
+			(Literal(Integer(names[4])),  (21, 25)),
+			(DotDot,                    (26, 27)),
+			(Literal(Integer(names[5])),  (28, 32)),
+			(Whitespace,                (33, 33)),
+			(Literal(Integer(names[6])),  (34, 34)),
+			(DotDot,                    (35, 36)),
+			(Literal(Integer(names[7])),  (37, 37)),
+			(Whitespace,                (38, 38)),
+			(Literal(Float(names[8])),    (39, 42)),
+			(DotDot,                    (43, 44)),
+			(Literal(Float(names[9])),    (45, 48)),
+			(Whitespace,                (49, 49)),
+			(Literal(Integer(names[10])), (50, 50)),
+			(Dot,                       (51, 51)),
+			(Identifier(names[11]),       (52, 52)),
+			(BinOp(Minus),              (53, 53)),
+			(Literal(Integer(names[12])), (54, 55)),
+		]);
+	}
+
+	#[test]
+	fn string_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{String};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r###" "Hello, World!" "\"" "'" "\n\t\x7F\u{1337}" "###);
+		let name_0  = ctx.symbol_table.borrow_mut().intern(r"Hello, World!");
+		let name_1  = ctx.symbol_table.borrow_mut().intern(r#"\""#);
+		let name_2  = ctx.symbol_table.borrow_mut().intern(r"'");
+		let name_3  = ctx.symbol_table.borrow_mut().intern(r"\n\t\x7F\u{1337}");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,              ( 0,  0)),
+			(Literal(String(name_0)), ( 1, 15)),
+			(Whitespace,              (16, 16)),
+			(Literal(String(name_1)), (17, 20)),
+			(Whitespace,              (21, 21)),
+			(Literal(String(name_2)), (22, 24)),
+			(Whitespace,              (25, 25)),
+			(Literal(String(name_3)), (26, 43)),
+			(Whitespace,              (44, 44)),
+		]);
+	}
+
+	#[test]
+	fn string_literal_escape_whitespace() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::{String};
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r#" "Hello, \
+			     World!""#);
+		let name_0 = ctx.symbol_table.borrow_mut().intern(
+			"Hello, \\\n\t\t\t     World!");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,              ( 0,  0)),
+			(Literal(String(name_0)), ( 1, 25)),
+		]);
+	}
 
 	// #[test]
 	// fn byte_string_literal() {
