@@ -1,0 +1,46 @@
+
+add_two := fn(n: Int) -> Int { n + 2 }
+add_three : fn(Int) -> Int = fn(n: Int) -> Int { n + 2 }
+
+Point2D := struct {
+	x: F32,
+	y: F32
+}
+
+Point2D impl {
+	pub eps     : F32 = 0.0001;
+	pub max_dist: F32 = 10_000.0;
+
+	pub origin := fn() -> Self {
+		Self{ x: 0.0, y: 0.0 }
+	}
+
+	pub len := fn(&self) -> F32 {
+		self.dist_to(Self::origin())
+	}
+
+	pub dist_to := fn(&self, other: ref Self) -> F32 {
+		dx := self.x - other.x;
+		dy := self.y - other.y;
+		std.math.sqrt(dx^2 + dy^2)
+	}
+}
+
+Printable := trait {
+	print: fn(&self, fmt: &mut std.io.fmt);
+}
+
+Weekday := enum {
+	Monday,
+	Tuesday,
+	Wednesday,
+	Thursday,
+	Friday,
+	Saturday,
+	Sunday
+}
+
+OptionalInt := enum {
+	Some(Int),
+	None
+}

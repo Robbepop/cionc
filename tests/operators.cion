@@ -1,0 +1,53 @@
+x + y // arith. Add
+x - y // arith. Sub
+x * y // arith. Mul
+x / y // arith. Div
+x % y // arith. Mod
+x ^ y // arith. Pow
+- x   // arith. Additive-Negation
+
+not a   // logical Not
+a and b // logical And
+a or  b // logical Or
+
+! o     // bitwise Negation
+o >>  p // bitwise Right-Shift
+o <<  p // bitwise Left-Shift
+o &   p // bitwise And
+o |   p // bitwise Or
+o xor p // bitwise Xor
+
+a  = b  // variable Assignment
+
+// Swapping += to =+ results in potential parsing problems with a=*b. Is it a=*(b) or a=(*b) ?
+// Same goes for a =- b. Is it an assignment to -b or an assignment to a - b?
+
+a += b  // op-assignment with Add
+a -= b  // op-assignment with Sub
+a *= b  // op-assignment with Mul
+a /= b  // op-assignment with Div
+a ^= b  // op-assignment with Pow
+
+a and= b // op-assignment with And
+a or=  b // op-assignment with Or
+
+a >>= b  // op-assignment with Right-Shift
+a <<= b  // op-assignment with Left-Shift
+a &= b   // op-assignment with Bitwise-And
+a |= b   // op-assignment with Bitwise-Or
+a xor= b // op-assignment with Bitwise-Xor
+
+a := b  // named Definition
+
+a == b  // comparison for Equality
+a <  b  // comparison for Less-Than
+a =< b  // comparison for Less-Equals
+a >  b  // comparison for Greater-Than
+a >= b  // comparison for Greater-Equals
+
+f(a,b,..) // function-call Operator
+a[n,m,..] // index-access Operator
+
+f.a       // dot Operator (access to internal fields or methods)
+f.m()     // 
+

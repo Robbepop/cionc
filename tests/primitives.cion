@@ -1,0 +1,36 @@
+
+// ==========================
+//  Fixed-Point Number Types
+// ==========================
+
+// -- with fixed size:
+I8, I16, I32, I64, I128
+U8, U16, U32, U64, U128
+
+// -- with system size:
+Int
+UInt
+
+// =============================
+//  Floating-Point Number Types
+// =============================
+
+F16, F32, F64
+
+// ===============
+//  Boolean Types
+// ===============
+
+Bool
+
+// =================
+//  Character Types
+// =================
+
+Char
+
+// ==============
+//  String Types
+// ==============
+
+String

@@ -1,0 +1,13 @@
+faculty_recursive := fn(n: UInt) -> UInt {
+	match n {
+		0 => 1,
+		_ => n * faculty_recursive(n - 1)
+	}
+}
+
+faculty_iterative := fn(n: UInt) -> UInt {
+	match n {
+		0 => 1,
+		_ => [1..n].prod()
+	}
+}

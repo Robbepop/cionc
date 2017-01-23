@@ -1,0 +1,5 @@
+use std.io;
+
+main := fn() {
+	print("Hello, World!")
+}

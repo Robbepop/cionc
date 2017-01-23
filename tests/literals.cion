@@ -1,0 +1,91 @@
+// ==================
+//  Integer Literals
+// ==================
+
+42
+// A simple integer literal.
+// Type: UInt
+
+42'I32
+// A type-annotated integer literal.
+// Type: I32
+
+10_000_000
+// A huge integer literal which has its digits separated for better readability.
+// Type: UInt
+
+1337'I64
+// Just another example of an integer literal.
+// Type: I64
+
+0x_0123_4567_890A_BCDE_FFFF
+// An integer literal represented as hexa-decimal number.
+// Must start with '0x'.
+// Note: '0X' is not allowed!
+// Only big-case letters (A,B,C,D,E,F) are allowed! 
+// type: UInt
+
+0b_0000_0101_1010_0110_1111
+// An integer literal represented as binary number.
+// Must start with '0b'.
+// Note: '0B' is not allowed!
+
+42__1337_____007__
+// Digit separators can span ranges and are simply ignored by the parser.
+
+
+// ================
+//  Float Literals 
+// ================
+
+42.0
+// A simple floating point number.
+// Type: F64
+// Note: Floating-point numbers in Cion need to have a dot '.' within them
+//       to identify as such. In Cion at least one digit has to be found before
+//       and after the dot.
+//       So the following floating point literals are invalid in Cion code!
+
+42. // Invalid floating point number! Missing at least one digit after the dot.
+.42 // Invalid floating point number! Missing at least one digit before the dot.
+
+1337.0'F32
+// A type annotated floating-point literal.
+// Type: F32
+
+0.31415e+3'F32
+// A type annotated floating-point literal that has an explicit exponent.
+// Note: The exponent 'e' is always followed by either '+' or '-' depending on
+//       the sign of the exponent.
+// Type: F32
+
+0xCFFF_0123_0099_6660'F64
+// A floating-point literal represented as a hexa-decimal number.
+// This is especially useful if the programmer wants to be sure about
+// the bitwise internal representation of the floating-point number.
+// For this to work the programmer has to specify the type annotation (e.g. 'F64')
+// Type: F64
+
+1_000_000_000.000_000_123
+// A floating_point literal.
+// As with integer literals it is possible to separate the digits with underscores.
+// Type: F64
+
+// ==================
+//  Boolean Literals
+// ==================
+
+true
+false
+
+// That's it! :D
+
+
+
+// ===============
+//  Utf8 Literals
+// ===============
+
+'a'
+// A character literal.
+// This is a unicode representation of an utf8 code point.
