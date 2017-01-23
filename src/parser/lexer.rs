@@ -14,11 +14,11 @@ pub struct TokenAndSpan {
 	sp: Span
 }
 
-pub struct Lexer<'ctx> {
-	context: &'ctx CompileContext,
-	input: FileMapIterator,
-	peeked: VecDeque<CharAndPos>,
-	name_buffer: String,
+pub struct Lexer {
+	context      : CompileContext,
+	input        : FileMapIterator,
+	peeked       : VecDeque<CharAndPos>,
+	name_buffer  : String,
 	span_consumed: Span
 }
 
@@ -36,12 +36,12 @@ enum SeparatorConfig {
 }
 use self::SeparatorConfig::*;
 
-impl<'ctx> Lexer<'ctx> {
+impl Lexer {
 	pub fn new_for_filemap(
-		ctx: &'ctx CompileContext,
-		fm: &FileMap
+		ctx: CompileContext,
+		fm : &FileMap
 	)
-		-> Lexer<'ctx>
+		-> Lexer
 	{
 		let mut lexer = Lexer {
 			context: ctx,
@@ -641,7 +641,7 @@ pub trait TokenStream {
     fn next_token(&mut self) -> TokenAndSpan;
 }
 
-impl<'ctx> TokenStream for Lexer<'ctx> {
+impl TokenStream for Lexer {
 	fn next_token(&mut self) -> TokenAndSpan {
 		use token::Token::*;
 		use token::DelimitToken::*;
@@ -796,7 +796,7 @@ impl<'ctx> TokenStream for Lexer<'ctx> {
 	}
 }
 
-impl<'ctx> Iterator for Lexer<'ctx> {
+impl Iterator for Lexer {
 	type Item = TokenAndSpan;
 
 	fn next(&mut self) -> Option<Self::Item> {
@@ -837,7 +837,7 @@ mod tests {
 		use token::DelimitToken::*;
 		let ctx = CompileContext::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap("fm1", "()[]{}?;,_");
-		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
 			(OpenDelim(Paren),    (0, 0)),
 			(CloseDelim(Paren),   (1, 1)),
@@ -859,7 +859,7 @@ mod tests {
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"//foo\n  /*bar\nbaz\n*/\n /*** //foo//***/");
-		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
 			(Comment,    ( 0,  5)),
 			(Whitespace, ( 6,  7)),
@@ -892,7 +892,7 @@ mod tests {
 			 : ::      \
 			 < << <<= <= \
 			 > >> >>= >="); // <= 10 columns per row!
-		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
 			(Dot,            ( 0,  0)),
 			(Whitespace,     ( 1,  1)),
@@ -990,7 +990,7 @@ mod tests {
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"   .\n\n\n.\r\n\r\n.\t\t\t");
-		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
 			(Whitespace, ( 0,  2)),
 			(Dot,        ( 3,  3)),
@@ -1015,16 +1015,24 @@ mod tests {
 			 underscores_at_the_end__ \
 			 with_N0m3r5 \
 			 j__u___5__T");
-		let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-		let sc = &ctx.symbol_table;
-		let name1 = sc.borrow_mut().intern("true");
-		let name2 = sc.borrow_mut().intern("false");
-		let name3 = sc.borrow_mut().intern("alphanumeric");
-		let name4 = sc.borrow_mut().intern("with_underscore");
-		let name5 = sc.borrow_mut().intern("BiGaNdSmAlL");
-		let name6 = sc.borrow_mut().intern("underscores_at_the_end__");
-		let name7 = sc.borrow_mut().intern("with_N0m3r5");
-		let name8 = sc.borrow_mut().intern("j__u___5__T");
+		let name1 = ctx.symbol_table.borrow_mut().intern("true");
+		let name2 = ctx.symbol_table.borrow_mut().intern("false");
+		let name3 = ctx.symbol_table.borrow_mut().intern("alphanumeric");
+		let name4 = ctx.symbol_table.borrow_mut().intern("with_underscore");
+		let name5 = ctx.symbol_table.borrow_mut().intern("BiGaNdSmAlL");
+		let name6 = ctx.symbol_table.borrow_mut().intern("underscores_at_the_end__");
+		let name7 = ctx.symbol_table.borrow_mut().intern("with_N0m3r5");
+		let name8 = ctx.symbol_table.borrow_mut().intern("j__u___5__T");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		// let sc = &ctx.symbol_table;
+		// let name1 = sc.borrow_mut().intern("true");
+		// let name2 = sc.borrow_mut().intern("false");
+		// let name3 = sc.borrow_mut().intern("alphanumeric");
+		// let name4 = sc.borrow_mut().intern("with_underscore");
+		// let name5 = sc.borrow_mut().intern("BiGaNdSmAlL");
+		// let name6 = sc.borrow_mut().intern("underscores_at_the_end__");
+		// let name7 = sc.borrow_mut().intern("with_N0m3r5");
+		// let name8 = sc.borrow_mut().intern("j__u___5__T");
 		check_lexer_output_against(&mut lexer, &[
 			(Identifier(name1), ( 0,  3)),
 			(Whitespace,        ( 4,  4)),

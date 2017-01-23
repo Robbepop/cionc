@@ -24,14 +24,12 @@ impl RcBoxStr {
 
 impl fmt::Debug for RcBoxStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Debug;
         self[..].fmt(f)
     }
 }
 
 impl fmt::Display for RcBoxStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Display;
         self[..].fmt(f)
     }
 }
@@ -49,32 +47,44 @@ impl Deref for RcBoxStr {
 }
 
 
-
 #[derive(Default)]
 pub struct StringCache {
-	map: RefCell<HashMap<RcBoxStr, Name>>,
-	names: RefCell<Vec<RcBoxStr>>
+	map  : HashMap<RcBoxStr, Name>,
+	names: Vec<RcBoxStr>
 }
 
 impl StringCache {
-	pub fn intern(&self, content: &str) -> Name {
-		match self.map.borrow_mut().get(content) {
+	pub fn prefill(&mut self, contents: &[&str]) -> Vec<Name> {
+		contents
+			.iter()
+			.map(|s| self.intern(s))
+			.collect()
+	}
+
+	pub fn intern(&mut self, content: &str) -> Name {
+		match self.map.get(content) {
 			Some(&id) => return id,
-			None      => ()
+			None      => {
+				let (rcstr, name) = self.gensym(content);
+				self.map.insert(rcstr, name);
+				name
+			}
 		}
-		let new_id = Name(self.len() as u32);
-		let new_item = RcBoxStr::new(content);
-		self.map.borrow_mut().insert(new_item.clone(), new_id);
-		self.names.borrow_mut().push(new_item);
-		new_id
+	}
+
+	fn gensym(&mut self, content: &str) -> (RcBoxStr, Name) {
+		let rcstr = RcBoxStr::new(content);
+		let name  = Name(self.len() as u32);
+		self.names.push(rcstr.clone());
+		(rcstr, name)
 	}
 
 	pub fn get(&self, id: Name) -> RcBoxStr {
-		(self.names.borrow()[id.0 as usize]).clone()
+		self.names[id.0 as usize].clone()
 	}
 
 	pub fn len(&self) -> usize {
-		self.names.borrow().len()
+		self.names.len()
 	}
 }
 
