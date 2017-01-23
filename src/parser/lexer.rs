@@ -1045,101 +1045,99 @@ mod tests {
 		]);
 	}
 
-	// #[test]
-	// fn char_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Char;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_a         = sc.borrow_mut().intern("a");
-	// 	let name_z         = sc.borrow_mut().intern("Z");
-	// 	let name_dbl_quote = sc.borrow_mut().intern("\"");
-	// 	let name_space     = sc.borrow_mut().intern(" ");
-	// 	let name_tab       = sc.borrow_mut().intern(r"\t");
-	// 	let name_carry_ret = sc.borrow_mut().intern(r"\r");
-	// 	let name_linefeed  = sc.borrow_mut().intern(r"\n");
-	// 	let name_colon     = sc.borrow_mut().intern(":");
-	// 	let name_null      = sc.borrow_mut().intern(r"\0");
-	// 	let name_backslash = sc.borrow_mut().intern(r"\\");
-	// 	let name_quote     = sc.borrow_mut().intern(r"\'");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,                    ( 0,  0)),
-	// 		(Literal(Char(name_a)),         ( 1,  3)),
-	// 		(Whitespace,                    ( 4,  4)),
-	// 		(Literal(Char(name_z)),         ( 5,  7)),
-	// 		(Whitespace,                    ( 8,  8)),
-	// 		(Literal(Char(name_dbl_quote)), ( 9, 11)),
-	// 		(Whitespace,                    (12, 12)),
-	// 		(Literal(Char(name_space)),     (13, 15)),
-	// 		(Whitespace,                    (16, 16)),
-	// 		(Literal(Char(name_tab)),       (17, 20)),
-	// 		(Whitespace,                    (21, 21)),
-	// 		(Literal(Char(name_carry_ret)), (22, 25)),
-	// 		(Whitespace,                    (26, 26)),
-	// 		(Literal(Char(name_linefeed)),  (27, 30)),
-	// 		(Whitespace,                    (31, 31)),
-	// 		(Literal(Char(name_colon)),     (32, 34)),
-	// 		(Whitespace,                    (35, 35)),
-	// 		(Literal(Char(name_null)),      (36, 39)),
-	// 		(Whitespace,                    (40, 40)),
-	// 		(Literal(Char(name_backslash)), (41, 44)),
-	// 		(Whitespace,                    (45, 45)),
-	// 		(Literal(Char(name_quote)),     (46, 49)),
-	// 		(Whitespace,                    (50, 50))
-	// 	]);
-	// }
+	#[test]
+	fn char_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Char;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
+		let name_a         = ctx.symbol_table.borrow_mut().intern("a");
+		let name_z         = ctx.symbol_table.borrow_mut().intern("Z");
+		let name_dbl_quote = ctx.symbol_table.borrow_mut().intern("\"");
+		let name_space     = ctx.symbol_table.borrow_mut().intern(" ");
+		let name_tab       = ctx.symbol_table.borrow_mut().intern(r"\t");
+		let name_carry_ret = ctx.symbol_table.borrow_mut().intern(r"\r");
+		let name_linefeed  = ctx.symbol_table.borrow_mut().intern(r"\n");
+		let name_colon     = ctx.symbol_table.borrow_mut().intern(":");
+		let name_null      = ctx.symbol_table.borrow_mut().intern(r"\0");
+		let name_backslash = ctx.symbol_table.borrow_mut().intern(r"\\");
+		let name_quote     = ctx.symbol_table.borrow_mut().intern(r"\'");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                    ( 0,  0)),
+			(Literal(Char(name_a)),         ( 1,  3)),
+			(Whitespace,                    ( 4,  4)),
+			(Literal(Char(name_z)),         ( 5,  7)),
+			(Whitespace,                    ( 8,  8)),
+			(Literal(Char(name_dbl_quote)), ( 9, 11)),
+			(Whitespace,                    (12, 12)),
+			(Literal(Char(name_space)),     (13, 15)),
+			(Whitespace,                    (16, 16)),
+			(Literal(Char(name_tab)),       (17, 20)),
+			(Whitespace,                    (21, 21)),
+			(Literal(Char(name_carry_ret)), (22, 25)),
+			(Whitespace,                    (26, 26)),
+			(Literal(Char(name_linefeed)),  (27, 30)),
+			(Whitespace,                    (31, 31)),
+			(Literal(Char(name_colon)),     (32, 34)),
+			(Whitespace,                    (35, 35)),
+			(Literal(Char(name_null)),      (36, 39)),
+			(Whitespace,                    (40, 40)),
+			(Literal(Char(name_backslash)), (41, 44)),
+			(Whitespace,                    (45, 45)),
+			(Literal(Char(name_quote)),     (46, 49)),
+			(Whitespace,                    (50, 50))
+		]);
+	}
 
-	// #[test]
-	// fn byte_literal() {
-	// 	use token::Token::{Literal, Whitespace};
-	// 	use token::LiteralToken::Byte;
-	// 	let ctx = CompileContext::default();
-	// 	let fm  = ctx.code_map.borrow_mut().new_filemap(
-	// 		"fm1",
-	// 		r#" b'a' b'Z' b'"' b' ' b'\t' b'\r' b'\n' b':' b'\0' b'\\' b'\'' "#);
-	// 	let mut lexer = Lexer::new_for_filemap(&ctx, &fm);
-	// 	let sc = &ctx.symbol_table;
-	// 	let name_a         = sc.borrow_mut().intern("a");
-	// 	let name_z         = sc.borrow_mut().intern("Z");
-	// 	let name_dbl_quote = sc.borrow_mut().intern("\"");
-	// 	let name_space     = sc.borrow_mut().intern(" ");
-	// 	let name_tab       = sc.borrow_mut().intern(r"\t");
-	// 	let name_carry_ret = sc.borrow_mut().intern(r"\r");
-	// 	let name_linefeed  = sc.borrow_mut().intern(r"\n");
-	// 	let name_colon     = sc.borrow_mut().intern(":");
-	// 	let name_null      = sc.borrow_mut().intern(r"\0");
-	// 	let name_backslash = sc.borrow_mut().intern(r"\\");
-	// 	let name_quote     = sc.borrow_mut().intern(r"\'");
-	// 	check_lexer_output_against(&mut lexer, &[
-	// 		(Whitespace,                    ( 0,  0)),
-	// 		(Literal(Byte(name_a)),         ( 1,  4)),
-	// 		(Whitespace,                    ( 5,  5)),
-	// 		(Literal(Byte(name_z)),         ( 6,  9)),
-	// 		(Whitespace,                    (10, 10)),
-	// 		(Literal(Byte(name_dbl_quote)), (11, 14)),
-	// 		(Whitespace,                    (15, 15)),
-	// 		(Literal(Byte(name_space)),     (16, 19)),
-	// 		(Whitespace,                    (20, 20)),
-	// 		(Literal(Byte(name_tab)),       (21, 25)),
-	// 		(Whitespace,                    (26, 26)),
-	// 		(Literal(Byte(name_carry_ret)), (27, 31)),
-	// 		(Whitespace,                    (32, 32)),
-	// 		(Literal(Byte(name_linefeed)),  (33, 37)),
-	// 		(Whitespace,                    (38, 38)),
-	// 		(Literal(Byte(name_colon)),     (39, 42)),
-	// 		(Whitespace,                    (43, 43)),
-	// 		(Literal(Byte(name_null)),      (44, 48)),
-	// 		(Whitespace,                    (49, 49)),
-	// 		(Literal(Byte(name_backslash)), (50, 54)),
-	// 		(Whitespace,                    (55, 55)),
-	// 		(Literal(Byte(name_quote)),     (56, 60)),
-	// 		(Whitespace,                    (61, 61))
-	// 	]);
-	// }
+	#[test]
+	fn byte_literal() {
+		use token::Token::{Literal, Whitespace};
+		use token::LiteralToken::Byte;
+		let ctx = CompileContext::default();
+		let fm  = ctx.code_map.borrow_mut().new_filemap(
+			"fm1",
+			r#" b'a' b'Z' b'"' b' ' b'\t' b'\r' b'\n' b':' b'\0' b'\\' b'\'' "#);
+		let name_a         = ctx.symbol_table.borrow_mut().intern("a");
+		let name_z         = ctx.symbol_table.borrow_mut().intern("Z");
+		let name_dbl_quote = ctx.symbol_table.borrow_mut().intern("\"");
+		let name_space     = ctx.symbol_table.borrow_mut().intern(" ");
+		let name_tab       = ctx.symbol_table.borrow_mut().intern(r"\t");
+		let name_carry_ret = ctx.symbol_table.borrow_mut().intern(r"\r");
+		let name_linefeed  = ctx.symbol_table.borrow_mut().intern(r"\n");
+		let name_colon     = ctx.symbol_table.borrow_mut().intern(":");
+		let name_null      = ctx.symbol_table.borrow_mut().intern(r"\0");
+		let name_backslash = ctx.symbol_table.borrow_mut().intern(r"\\");
+		let name_quote     = ctx.symbol_table.borrow_mut().intern(r"\'");
+		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
+		check_lexer_output_against(&mut lexer, &[
+			(Whitespace,                    ( 0,  0)),
+			(Literal(Byte(name_a)),         ( 1,  4)),
+			(Whitespace,                    ( 5,  5)),
+			(Literal(Byte(name_z)),         ( 6,  9)),
+			(Whitespace,                    (10, 10)),
+			(Literal(Byte(name_dbl_quote)), (11, 14)),
+			(Whitespace,                    (15, 15)),
+			(Literal(Byte(name_space)),     (16, 19)),
+			(Whitespace,                    (20, 20)),
+			(Literal(Byte(name_tab)),       (21, 25)),
+			(Whitespace,                    (26, 26)),
+			(Literal(Byte(name_carry_ret)), (27, 31)),
+			(Whitespace,                    (32, 32)),
+			(Literal(Byte(name_linefeed)),  (33, 37)),
+			(Whitespace,                    (38, 38)),
+			(Literal(Byte(name_colon)),     (39, 42)),
+			(Whitespace,                    (43, 43)),
+			(Literal(Byte(name_null)),      (44, 48)),
+			(Whitespace,                    (49, 49)),
+			(Literal(Byte(name_backslash)), (50, 54)),
+			(Whitespace,                    (55, 55)),
+			(Literal(Byte(name_quote)),     (56, 60)),
+			(Whitespace,                    (61, 61))
+		]);
+	}
 
 	// #[test]
 	// #[allow(non_snake_case)]

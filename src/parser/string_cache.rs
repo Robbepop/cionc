@@ -94,7 +94,7 @@ mod tests {
 
 	#[test]
 	fn simple_test() {
-		let cache = StringCache::default();
+		let mut cache = StringCache::default();
 		assert_eq!(cache.len(), 0);
 		assert_eq!(cache.intern("foo"), Name(0));
 		assert_eq!(cache.intern("bar"), Name(1));
