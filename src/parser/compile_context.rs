@@ -11,13 +11,6 @@ use code_map::CodeMap;
 // can use.
 // It has methods to get references to its members so types like Lexer and Parser just
 // have to have one member of this type in order to access all of its utility members.
-
-#[derive(Default)]
-pub struct CompileContext {
-	pub symbol_table: RefCell<StringCache>,
-	pub code_map    : RefCell<CodeMap>
-}
-
 #[derive(Default, Clone)]
 pub struct ParseSess {
 	data: Rc<ParseSessData>

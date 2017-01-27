@@ -14,7 +14,7 @@ pub struct RcBoxStr {
 }
 
 impl RcBoxStr {
-    pub fn new(string: &str) -> RcBoxStr {
+    pub fn from_str(string: &str) -> RcBoxStr {
         RcBoxStr {
             string: Rc::new(string.to_string().into_boxed_str()),
         }
@@ -62,7 +62,7 @@ impl StringCache {
 
 	pub fn intern(&mut self, content: &str) -> Name {
 		match self.map.get(content) {
-			Some(&id) => return id,
+			Some(&id) => id,
 			None      => {
 				let (rcstr, name) = self.gensym(content);
 				self.map.insert(rcstr, name);
@@ -72,7 +72,7 @@ impl StringCache {
 	}
 
 	fn gensym(&mut self, content: &str) -> (RcBoxStr, Name) {
-		let rcstr = RcBoxStr::new(content);
+		let rcstr = RcBoxStr::from_str(content);
 		let name  = Name(self.len() as u32);
 		self.names.push(rcstr.clone());
 		(rcstr, name)
@@ -101,11 +101,11 @@ mod tests {
 		assert_eq!(cache.intern("bat"), Name(3));
 		assert_eq!(cache.intern("bam"), Name(4));
 		assert_eq!(cache.len(), 5);
-		assert_eq!(cache.get(Name(0)), RcBoxStr::new("foo"));
-		assert_eq!(cache.get(Name(1)), RcBoxStr::new("bar"));
-		assert_eq!(cache.get(Name(2)), RcBoxStr::new("baz"));
-		assert_eq!(cache.get(Name(3)), RcBoxStr::new("bat"));
-		assert_eq!(cache.get(Name(4)), RcBoxStr::new("bam"));
+		assert_eq!(cache.get(Name(0)), RcBoxStr::from_str("foo"));
+		assert_eq!(cache.get(Name(1)), RcBoxStr::from_str("bar"));
+		assert_eq!(cache.get(Name(2)), RcBoxStr::from_str("baz"));
+		assert_eq!(cache.get(Name(3)), RcBoxStr::from_str("bat"));
+		assert_eq!(cache.get(Name(4)), RcBoxStr::from_str("bam"));
 		assert_eq!(cache.intern("foo"), Name(0));
 		assert_eq!(cache.intern("bar"), Name(1));
 		assert_eq!(cache.intern("baz"), Name(2));
