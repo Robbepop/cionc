@@ -646,7 +646,6 @@ impl TokenStream for Lexer {
 		use token::Token::*;
 		use token::DelimitToken::*;
 		use token::BinOpToken::*;
-		use token::LogicalOpToken::*;
 		use token::RelOpToken::*;
 
 		// self.clear_buffer();
@@ -758,14 +757,14 @@ impl TokenStream for Lexer {
 
 			/* Tokens starting with '&' */
 			'&' => match self.consume(Dump).peek() {
-				'&' => self.consume(Dump).make(LogicalOp(AndAnd)),
+				'&' => self.consume(Dump).make(BinOp(AmpAmp)),
 				'=' => self.consume(Dump).make(BinOpEq(And)),
 				_   => self.make(BinOp(And))
 			},
 
 			/* Tokens starting with '|' */
 			'|' => match self.consume(Dump).peek() {
-				'|' => self.consume(Dump).make(LogicalOp(OrOr)),
+				'|' => self.consume(Dump).make(BinOp(PipePipe)),
 				'=' => self.consume(Dump).make(BinOpEq(Or)),
 				_   => self.make(BinOp(Or))
 			},
@@ -874,7 +873,6 @@ mod tests {
 		use token::Token::*;
 		use token::BinOpToken::*;
 		use token::RelOpToken::*;
-		use token::LogicalOpToken::*;
 		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
@@ -947,14 +945,14 @@ mod tests {
 
 			(BinOp(And),     (90, 90)),
 			(Whitespace,     (91, 91)),
-			(LogicalOp(AndAnd), (92, 93)),
+			(BinOp(AmpAmp),  (92, 93)),
 			(Whitespace,     (94, 94)),
 			(BinOpEq(And),   (95, 96)),
 			(Whitespace,     (97, 99)),
 
 			(BinOp(Or),      (100, 100)),
 			(Whitespace,     (101, 101)),
-			(LogicalOp(OrOr), (102, 103)),
+			(BinOp(PipePipe),(102, 103)),
 			(Whitespace,     (104, 104)),
 			(BinOpEq(Or),    (105, 106)),
 			(Whitespace,     (107, 109)),

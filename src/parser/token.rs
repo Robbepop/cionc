@@ -18,7 +18,9 @@ pub enum BinOpToken {
     And,     // &
     Or,      // |
     Shl,     // <<
-    Shr      // >>
+    Shr,     // >>
+    AmpAmp,  // &&
+    PipePipe // ||
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -29,12 +31,6 @@ pub enum RelOpToken {
     LessEq,      // <=
     GreaterThan, // >
     GreaterEq    // >=
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum LogicalOpToken {
-    AndAnd, // &&
-    OrOr    // ||
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -58,8 +54,6 @@ pub enum LiteralToken {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Token {
-    /* Logical operators, e.g. && or || */
-    LogicalOp(LogicalOpToken),
     /* Binary operators compatible with assignment, e.g. +, - */
     BinOp(BinOpToken),
     /* Binary assignment operators, e.g. +=, -= */
