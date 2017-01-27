@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+use std::rc::Rc;
+use std::ops::Deref;
 
 use string_cache::StringCache;
 use code_map::CodeMap;
@@ -14,4 +16,21 @@ use code_map::CodeMap;
 pub struct CompileContext {
 	pub symbol_table: RefCell<StringCache>,
 	pub code_map    : RefCell<CodeMap>
+}
+
+pub struct ParseSess {
+	data: Rc<ParseSessData>
+}
+
+pub struct ParseSessData {
+	pub symbol_table: StringCache,
+	pub code_map    : CodeMap
+}
+
+impl Deref for ParseSess {
+	type Target = ParseSessData;
+
+	fn deref(&self) -> &Self::Target {
+		&self.data
+	}
 }

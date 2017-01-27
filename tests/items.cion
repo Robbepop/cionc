@@ -1,6 +1,6 @@
 
 add_two := fn(n: Int) -> Int { n + 2 }
-add_three : fn(Int) -> Int = fn(n: Int) -> Int { n + 2 }
+add_three: fn(Int) -> Int = fn(n: Int) -> Int { n + 2 }
 
 Point2D := struct {
 	x: F32,
