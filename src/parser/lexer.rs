@@ -4,7 +4,7 @@ use token::*;
 use compile_context::{ParseSess};
 use string_cache::Name;
 use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
-use util::char_util::CharProperties;
+// use util::char_util::CharProperties;
 
 // This is the lexer implementation for the parser (that sadly doesn't exist yet).
 
@@ -219,8 +219,8 @@ impl Lexer {
 	}
 
 	fn scan_identifier(&mut self) -> TokenAndSpan {
-		self.expect_by(Keep, |c| c.is_alpha());
-		self.consume_while(Keep, |c| c.is_alpha_numeral() || c == '_');
+		self.expect_by(Keep, |c| c.is_alphabetic());
+		self.consume_while(Keep, |c| c.is_alphanumeric() || c == '_');
 		self.make(Token::Identifier(self.fetch_name()))
 	}
 
@@ -312,7 +312,7 @@ impl Lexer {
 	}
 
 	fn scan_decimal_literal(&mut self) -> TokenAndSpan {
-		assert!(self.peek().is_decimal_numeral() || self.peek() == '_');
+		assert!(self.peek().is_digit(10) || self.peek() == '_');
 		self.scan_digits(10, 10);
 		match self.peek() {
 			'.' => self.scan_possible_float_literal(),
@@ -347,7 +347,7 @@ impl Lexer {
 
 	fn scan_float_literal(&mut self) -> TokenAndSpan {
 		self.expect_char(Keep, '.');
-		self.expect_by(Keep, |c| c.is_decimal_numeral());
+		self.expect_by(Keep, |c| c.is_digit(10));
 		self.scan_digits(10, 10);
 		self.scan_float_literal_exponent()
 	}
@@ -362,14 +362,14 @@ impl Lexer {
 	fn scan_possible_float_literal(&mut self) -> TokenAndSpan {
 		assert_eq!(self.peek(), '.');
 		match self.peek_2() {
-			('.',  c ) if c.is_decimal_numeral()
+			('.',  c ) if c.is_digit(10)
 				=> self.scan_float_literal(),
 			_ 	=> self.make_integer()
 		}
 	}
 
 	fn scan_number_literal(&mut self) -> TokenAndSpan {
-		assert!(self.peek().is_decimal_numeral());
+		assert!(self.peek().is_digit(10));
 		match self.peek() {
 			'0' => match self.consume(Keep).peek() {
 				'b' => self.scan_binary_literal(),
@@ -661,7 +661,7 @@ impl TokenStream for Lexer {
 			},
 
 			// /* Identifiers and keywords */
-			c if c.is_alpha() => match self.peek_3() {
+			c if c.is_alphabetic() => match self.peek_3() {
 				('r', '"',  _ ) |
 				('r', '#',  _ ) => self.scan_raw_string_literal(),
 				('b', '\'', _ ) => self.scan_byte_literal(),
@@ -672,7 +672,7 @@ impl TokenStream for Lexer {
 			},
 
 			/* Integer- and float literals and identifiers */
-			c if c.is_decimal_numeral() => self.scan_number_literal(),
+			c if c.is_digit(10) => self.scan_number_literal(),
 
 			/* Opening delimiters */
 			'(' => self.consume(Dump).make(OpenDelim(Paren)),

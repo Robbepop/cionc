@@ -1,4 +1,4 @@
-use cionc_utils::in_range_of::*;
+// use cionc_utils::in_range_of::*;
 
 // This trait is just a very simply utility for working with characters in the Lexer
 // so that checks like is_whitespace can be called via method call syntax
@@ -9,7 +9,7 @@ use cionc_utils::in_range_of::*;
 // Create a wrapper for char and implement these methods there?
 
 pub trait CharProperties {
-	fn is_whitespace(&self) -> bool;
+	// fn is_whitespace(&self) -> bool;
 	fn is_binary_numeral(&self) -> bool;
 	fn is_octal_numeral(&self) -> bool;
 	fn is_decimal_numeral(&self) -> bool;
@@ -19,42 +19,56 @@ pub trait CharProperties {
 }
 
 impl CharProperties for char {
-	fn is_whitespace(&self) -> bool {
-		match *self {
-			' '  |
-			'\t' |
-			'\n' |
-			'\r' => true,
-			_    => false
-		}
-	}
+	// /// Deprecated by fn char::is_whitespace()
+	// fn is_whitespace(&self) -> bool {
+	// 	match *self {
+	// 		' '  |
+	// 		'\t' |
+	// 		'\n' |
+	// 		'\r' => true,
+	// 		_    => false
+	// 	}
+	// }
 
+	/// Deprecated by fn char::is_digit(2)
 	fn is_binary_numeral(&self) -> bool {
-		*self == '0' ||
-		*self == '1'
+		// *self == '0' ||
+		// *self == '1'
+		self.is_digit(2)
 	}
 
+	/// Deprecated by fn char::is_digit(8)
 	fn is_octal_numeral(&self) -> bool {
-		self.in_range_of('0','7')
+		// self.in_range_of('0','7')
+		self.is_digit(8)
 	}
 
+	/// Deprecated by fn char::is_digit(10)
 	fn is_decimal_numeral(&self) -> bool {
-		self.in_range_of('0','9')
+		// self.in_range_of('0','9')
+		self.is_digit(10)
 	}
 
+	/// Deprecated by fn char::is_digit(16)
 	fn is_hexdec_numeral(&self) -> bool {
-		self.is_decimal_numeral() ||
-		self.in_range_of('a','z') ||
-		self.in_range_of('A','Z')
+		// self.is_decimal_numeral() ||
+		// self.in_range_of('a','z') ||
+		// self.in_range_of('A','Z')
+		self.is_digit(16)
 	}
 
+	/// Deprecated by fn char::is_alphabetic()
 	fn is_alpha(&self) -> bool {
-		self.in_range_of('a','z') ||
-		self.in_range_of('A','Z')
+		// self.in_range_of('a','z') ||
+		// self.in_range_of('A','Z')
+		self.is_alphabetic()
 	}
 
+	/// Deprecated by fn char::is_alphabetic() || char::is_digit(10)
 	fn is_alpha_numeral(&self) -> bool {
-		self.is_alpha() || self.is_decimal_numeral()
+		// self.is_alpha() || self.is_decimal_numeral()
+		// self.is_alphabetic() || self.is_digit(10)
+		self.is_alphanumeric()
 	}
 }
 
