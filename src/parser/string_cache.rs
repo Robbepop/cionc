@@ -46,7 +46,7 @@ impl Deref for RcBoxStr {
 }
 
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct StringCache {
 	map  : HashMap<RcBoxStr, Name>,
 	names: Vec<RcBoxStr>

@@ -18,13 +18,15 @@ pub struct CompileContext {
 	pub code_map    : RefCell<CodeMap>
 }
 
+#[derive(Default, Clone)]
 pub struct ParseSess {
 	data: Rc<ParseSessData>
 }
 
+#[derive(Default)]
 pub struct ParseSessData {
-	pub symbol_table: StringCache,
-	pub code_map    : CodeMap
+	pub symbol_table: RefCell<StringCache>,
+	pub code_map    : RefCell<CodeMap>
 }
 
 impl Deref for ParseSess {

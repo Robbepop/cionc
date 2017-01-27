@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use token::*;
-use compile_context::CompileContext;
+use compile_context::{CompileContext, ParseSess, ParseSessData};
 use string_cache::Name;
 use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 use util::char_util::CharProperties;
@@ -15,7 +15,7 @@ pub struct TokenAndSpan {
 }
 
 pub struct Lexer {
-	context      : CompileContext,
+	context      : ParseSess,
 	input        : FileMapIterator,
 	peeked       : VecDeque<CharAndPos>,
 	name_buffer  : String,
@@ -38,7 +38,7 @@ use self::SeparatorConfig::*;
 
 impl Lexer {
 	pub fn new_for_filemap(
-		ctx: CompileContext,
+		ctx: ParseSess,
 		fm : &FileMap
 	)
 		-> Lexer
@@ -812,7 +812,7 @@ impl Iterator for Lexer {
 mod tests {
 	use super::*;
 	use token::*;
-	use compile_context::CompileContext;
+	use compile_context::{CompileContext, ParseSess, ParseSessData};
 	use code_map::Span;
 
 	fn check_lexer_output_against(
@@ -835,7 +835,7 @@ mod tests {
 	fn single_byte_tokens() {
 		use token::Token::*;
 		use token::DelimitToken::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap("fm1", "()[]{}?;,_");
 		let mut lexer = Lexer::new_for_filemap(ctx, &fm);
 		check_lexer_output_against(&mut lexer, &[
@@ -855,7 +855,7 @@ mod tests {
 	#[test]
 	fn comments() {
 		use token::Token::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"//foo\n  /*bar\nbaz\n*/\n /*** //foo//***/");
@@ -875,7 +875,7 @@ mod tests {
 		use token::BinOpToken::*;
 		use token::RelOpToken::*;
 		use token::LogicalOpToken::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			". .. ...  \
@@ -986,7 +986,7 @@ mod tests {
 	#[test]
 	fn whitespace() {
 		use token::Token::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"   .\n\n\n.\r\n\r\n.\t\t\t");
@@ -1005,7 +1005,7 @@ mod tests {
 	#[test]
 	fn simple_identifiers() {
 		use token::Token::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"true false \
@@ -1049,7 +1049,7 @@ mod tests {
 	fn char_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Char;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r#" 'a' 'Z' '"' ' ' '\t' '\r' '\n' ':' '\0' '\\' '\'' "#);
@@ -1096,7 +1096,7 @@ mod tests {
 	fn byte_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Byte;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r#" b'a' b'Z' b'"' b' ' b'\t' b'\r' b'\n' b':' b'\0' b'\\' b'\'' "#);
@@ -1143,7 +1143,7 @@ mod tests {
 	fn char_ascii_escape_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Char;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r" '\x00' '\x7F' '\x09' ");
@@ -1172,7 +1172,7 @@ mod tests {
 	fn byte_ascii_escape_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Byte;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r" b'\x00' b'\x7F' b'\x09' ");
@@ -1196,7 +1196,7 @@ mod tests {
 	fn char_unicode_escape_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Char;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r" '\u{0}' '\u{1337}' '\u{0FFFFF}' '\u{100000}' ");
@@ -1223,7 +1223,7 @@ mod tests {
 	fn byte_unicode_escape_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Byte;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r" b'\u{0}' b'\u{000001}' b'\u{7F}' b'\u{42}' ");
@@ -1249,7 +1249,7 @@ mod tests {
 	fn decimal_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"0 42 1337 1_234_567_890 007 1__");
@@ -1279,7 +1279,7 @@ mod tests {
 	fn binary_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"0b0 0b1 0b0__ 0b__1 0b11____11 0b_0000_0101_1111");
@@ -1309,7 +1309,7 @@ mod tests {
 	fn octal_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"0o0 0o1 0o0__ 0o__7 0o42____51 0o_123_456_777");
@@ -1339,7 +1339,7 @@ mod tests {
 	fn hexdec_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"0x0 0xF 0x0__ 0x__A 0xA9____B2 0x_0123_4567_89AB_CDEF");
@@ -1369,7 +1369,7 @@ mod tests {
 	fn float_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Float;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"0.0       \
@@ -1415,7 +1415,7 @@ mod tests {
 		use token::LiteralToken::{Integer, Float};
 		use token::BinOpToken::Minus;
 		use token::DelimitToken::*;
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			"17.foo() 0xABC.exp() 0b110..0o736 0..9 1.23..45.6 5.e-12");
@@ -1472,7 +1472,7 @@ mod tests {
 	fn string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{String};
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r###" "Hello, World!" "\"" "'" "\n\t\x7F\u{1337}" "###);
@@ -1498,7 +1498,7 @@ mod tests {
 	fn string_literal_escape_whitespace() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{String};
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r#" "Hello, \
@@ -1516,7 +1516,7 @@ mod tests {
 	fn byte_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{ByteString};
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r###" b"Hello, World!" b"\"" b"'" b"\n\t\x7F\u{42}" "###);
@@ -1542,7 +1542,7 @@ mod tests {
 	fn raw_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{RawString};
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r###" r"Hello, World!" r##"\""## r#"'"# r"\n\t\x7F\u{0F0F0}" "###);
@@ -1568,7 +1568,7 @@ mod tests {
 	fn raw_byte_string_literal() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::{RawByteString};
-		let ctx = CompileContext::default();
+		let ctx = ParseSess::default();
 		let fm  = ctx.code_map.borrow_mut().new_filemap(
 			"fm1",
 			r###" br"Hello, World!" br##"\""## br#"'"# br"\n\t\x7F\u{0F0F0F}" "###);
