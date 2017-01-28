@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use token::*;
-use compile_context::{ParseSess};
+use parse_sess::{ParseSess};
 use string_cache::Name;
 use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 // use util::char_util::CharProperties;
@@ -810,7 +810,7 @@ impl Iterator for Lexer {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use compile_context::{ParseSess};
+	use parse_sess::{ParseSess};
 	use code_map::Span;
 
 	fn check_lexer_output_against(
