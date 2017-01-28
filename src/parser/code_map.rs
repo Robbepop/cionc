@@ -1,15 +1,9 @@
 use std::rc::Rc;
-use std::cell::Cell;
-use std::cell::RefCell;
-
-use std::ops::Add;
-use std::ops::Sub;
-
+use std::cell::{Cell, RefCell};
+use std::ops::{Add, Sub, Deref};
 use std::fmt;
 use std::io;
 use std::path::Path; // used by the FileLoader trait
-
-use std::ops::Deref;
 
 /// A byte offset.
 /// This is used as an index into FileMaps of the owning CodeMap.

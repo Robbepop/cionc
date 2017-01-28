@@ -8,6 +8,6 @@ faculty_recursive := fn(n: UInt) -> UInt {
 faculty_iterative := fn(n: UInt) -> UInt {
 	match n {
 		0 => 1,
-		_ => [1..n].prod()
+		_ => (1..n).prod()
 	}
 }

@@ -810,7 +810,6 @@ impl Iterator for Lexer {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use token::*;
 	use compile_context::{ParseSess};
 	use code_map::Span;
 

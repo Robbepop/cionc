@@ -1,5 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
+/// Used for indirection within the abstract syntax tree (AST).
+/// 
+/// This is currently just a simple wrapper around Box<T> but
+/// this may change in future.
 struct P<T>(Box<T>);
 
 impl<T> Deref for P<T> {
