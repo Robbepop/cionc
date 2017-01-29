@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use token::*;
 use parse_sess::{ParseSess};
-use string_cache::Name;
+use string_interner::Name;
 use code_map::{FileMap, FileMapIterator, CharAndPos, Span};
 // use util::char_util::CharProperties;
 

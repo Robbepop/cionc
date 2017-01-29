@@ -1,11 +1,15 @@
+use ::string_interner::{Name};
+use ast::ptr::P;
 
-struct Item {
+pub struct Item {
 	name: Name,
 	kind: ItemKind
 }
 
-enum ItemKind {
-	Module(P<ModuleItem>),
+pub enum ItemKind {
+	Module(ModuleItem),
 }
 
-struct ModuleItem;
+pub struct ModuleItem {
+	items: Vec<P<Item>>
+}

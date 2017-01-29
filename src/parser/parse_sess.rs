@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::ops::Deref;
 
-use string_cache::StringCache;
+use string_interner::StringCache;
 use code_map::CodeMap;
 
 // This type is the root to manage several subcomponents.

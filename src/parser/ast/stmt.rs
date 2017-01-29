@@ -1,10 +1,18 @@
+use ast::ptr::P;
+use ast::expr::Expr;
+use ast::item::Item;
 
-struct Stmt {
+pub struct Stmt {
 	kind: StmtKind
 }
 
-enum StmtKind {
-	Let(P<LetStmt>),
+pub enum StmtKind {
+	Let(LetStmt),
+	Item(P<Item>),
 	Expr(P<Expr>),
 	Semi(P<Expr>)
+}
+
+pub struct LetStmt {
+
 }

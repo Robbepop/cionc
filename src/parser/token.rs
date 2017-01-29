@@ -5,7 +5,7 @@
 // The tokens and their layout used in this simple implementation
 // are based on the Rustc token types.
 
-use string_cache::Name;
+use string_interner::Name;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -28,7 +28,7 @@ pub enum RelOpToken {
     EqEq,        // ==
     NotEq,       // !=
     LessThan,    // <
-    LessEq,      // <=
+    LessEq,      // =<
     GreaterThan, // >
     GreaterEq    // >=
 }
