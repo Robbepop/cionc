@@ -1,8 +1,0 @@
-[package]
-name = "cionc_utils"
-version = "0.0.1"
-authors = ["Robbepop"]
-
-[lib]
-name = "cionc_utils"
-path = "lib.rs"

@@ -1,7 +1,6 @@
 use std::env;
 
 extern crate cionc_parser;
-extern crate cionc_utils;
 
 fn parse_arguments() -> Result<i32, String> {
     let args = env::args().skip(1).next();

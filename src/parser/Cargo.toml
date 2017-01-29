@@ -6,6 +6,3 @@ authors = ["Robbepop"]
 [lib]
 name = "cionc_parser"
 path = "lib.rs"
-
-[dependencies.cionc_utils]
-path = "../utils"
