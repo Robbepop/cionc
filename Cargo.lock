@@ -3,17 +3,9 @@ name = "cionc"
 version = "0.1.0"
 dependencies = [
  "cionc_parser 0.0.1",
- "cionc_utils 0.0.1",
 ]
 
 [[package]]
 name = "cionc_parser"
-version = "0.0.1"
-dependencies = [
- "cionc_utils 0.0.1",
-]
-
-[[package]]
-name = "cionc_utils"
 version = "0.0.1"
 
