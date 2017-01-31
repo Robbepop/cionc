@@ -11,7 +11,7 @@ pub struct Item {
 
 pub enum ItemKind {
 	/// Named items (`foo := struct {...}´) are Declarations
-	Decl(Decl),
+	Defn(Defn),
 
 	/// Use item (`use foo::bar::baz;´)
 	Use(UseItem),
@@ -28,9 +28,9 @@ pub struct ImplItem {
 	// TODO
 }
 
-pub struct Decl {
+pub struct Defn {
 	name: Name,
-	kind: DeclKind,
+	kind: DefnKind,
 	visibility: Visibility
 }
 
@@ -39,27 +39,27 @@ pub enum Visibility {
 	Pub,
 }
 
-pub enum DeclKind {
+pub enum DefnKind {
 	/// Named binding to an expression. (`x := 42 + 1337;´)
-	Expr(ExprDecl),
+	Expr(ExprDefn),
 
 	/// Function definition (`add := fn(a: I32, b: I32) -> I32 { a + b }´)
-	Fn(FnDecl),
+	Fn(FnDefn),
 
 	/// Struct definition (`Point2D := struct { x: F32, y: F32 }´)
-	Struct(StructDecl),
+	Struct(StructDefn),
 
 	/// Enum definition (`Trite := enum { Hi, Lo, Undet })
-	Enum(EnumDecl),
+	Enum(EnumDefn),
 
 	/// Trait definition (`Zero := trait { zero := fn() -> Self; })
-	Trait(TraitDecl),
+	Trait(TraitDefn),
 
 	/// Module definition (`math := module { ... }´)
-	Module(ModuleDecl)
+	Module(ModuleDefn)
 }
 
-pub struct ExprDecl {
+pub struct ExprDefn {
 	expr: P<Expr>,
 	mutability: Mutability
 }
@@ -69,22 +69,22 @@ pub enum Mutability {
 	Mutable
 }
 
-pub struct FnDecl {
+pub struct FnDefn {
 	// TODO
 }
 
-pub struct StructDecl {
+pub struct StructDefn {
 	// TODO
 }
 
-pub struct EnumDecl {
+pub struct EnumDefn {
 	// TODO
 }
 
-pub struct TraitDecl {
+pub struct TraitDefn {
 	// TODO
 }
 
-pub struct ModuleDecl {
+pub struct ModuleDefn {
 	items: Vec<Item>
 }
