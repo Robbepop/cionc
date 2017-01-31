@@ -12,7 +12,7 @@ pub enum PatKind {
 	/// a literal, e.g. `5`
 	Lit(LitPat),
 
-    /// a reference pattern, e.g. `&mut (a, b)`
+	/// a reference pattern, e.g. `&mut (a, b)`
 	Ref(RefPat),
 
 	/// a tuple, e.g. `(a, b)`
@@ -27,7 +27,7 @@ pub enum PatKind {
 	/// a inclusive or exclusive range, e.g. `1..2` or `0...10`
 	Range(RangePat),
 
-    /// a slice pattern, e.g. `[a, b, ..i, y, z]`
+	/// a slice pattern, e.g. `[a, b, ..i, y, z]`
 	Slice(SlicePat),
 
 	/// a path pattern, e.g. `A::B::a`
