@@ -1,0 +1,45 @@
+// The Cion Programming Language
+
+Age := struct(I32)
+
+Person := struct{
+	name    : String
+	age     : Age
+	children: DynArray[Person]
+}
+
+Person impl {
+	pub new := fn(name: String, age: Age) -> Self {
+		Self {
+			name: name
+			age : age
+		}
+	}
+
+	pub birthday := fn(ref mut self) {
+		self.age += 1
+	}
+}
+
+// The Rust Programming Language
+
+struct Age(i32);
+
+struct Person{
+	name    : String,
+	age     : Age,
+	children: Vec<Person>
+}
+
+impl Person {
+	pub fn new(name: String, age: Age) -> Self {
+		Self {
+			name: name,
+			age : age
+		}
+	}
+
+	pub fn birthday(&mut self) {
+		self.age += 1
+	}
+}

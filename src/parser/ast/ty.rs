@@ -2,8 +2,8 @@ use ast::node_id::NodeId;
 use ast::ptr::P;
 
 pub struct Ty {
-	id  : NodeId,
-	kind: TyKind
+	pub id  : NodeId,
+	pub kind: TyKind
 }
 
 pub enum TyKind {

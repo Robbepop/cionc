@@ -9,6 +9,9 @@ name = "cionc"
 [dependencies.cionc_parser]
 path = "src/parser"
 
+[dependencies]
+clap = "2.20"
+
 [[test]]
 name = "test_cionc_parser"
 path = "src/parser/lib.rs"

@@ -4,8 +4,8 @@ use ast::expr::Expr;
 use ast::item::Item;
 
 pub struct Stmt {
-	id  : NodeId,
-	kind: StmtKind
+	pub id  : NodeId,
+	pub kind: StmtKind
 }
 
 pub enum StmtKind {

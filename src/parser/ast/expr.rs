@@ -3,8 +3,8 @@ use ast::ptr::P;
 use ast::stmt::Stmt;
 
 pub struct Expr {
-	id:   NodeId,
-	kind: ExprKind
+	pub id:   NodeId,
+	pub kind: ExprKind
 }
 
 pub enum ExprKind {

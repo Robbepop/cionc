@@ -1,8 +1,8 @@
 use ast::node_id::NodeId;
 
 pub struct Pat {
-	id: NodeId,
-	kind: PatKind
+	pub id: NodeId,
+	pub kind: PatKind
 }
 
 pub enum PatKind {

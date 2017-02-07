@@ -5,8 +5,8 @@ use ast::expr::Expr;
 use ::string_interner::{Name};
 
 pub struct Item {
-	id  : NodeId,
-	kind: ItemKind
+	pub id  : NodeId,
+	pub kind: ItemKind
 }
 
 pub enum ItemKind {
