@@ -40,9 +40,9 @@ after_success:
   - sudo make install
   - cd ../..
   - rm -rf kcov-master
-  - travis-cargo --only stable coveralls --no-sudo --verify
-  # - kcov --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/cionc-*
-  # - bash <(curl -s https://codecov.io/bash)
+  # - travis-cargo --only stable coveralls --no-sudo --verify
+  - kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/cionc-*
+  - bash <(curl -s https://codecov.io/bash)
   - echo "Uploaded code coverage"
 
 env:
