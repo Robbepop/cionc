@@ -11,6 +11,7 @@ path = "src/parser"
 
 [dependencies]
 clap = "2.20"
+num = "0"
 
 [[test]]
 name = "test_cionc_parser"

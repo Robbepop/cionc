@@ -1,10 +1,14 @@
 extern crate clap;
-
 extern crate cionc_parser;
+
+extern crate num;
 
 use clap::{Arg, App};
 
 fn main() {
+
+// kcov --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/cionc
+
 	App::new("Cion Compiler")
 		.version("0.1.0")
 		.author("Robbepop <robbepop@web.de>")
