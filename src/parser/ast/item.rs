@@ -2,7 +2,7 @@ use ast::node_id::NodeId;
 use ast::ptr::P;
 use ast::expr::Expr;
 
-use ::string_interner::{Name};
+use ::name::{Name};
 
 pub struct Item {
 	pub id  : NodeId,

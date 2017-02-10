@@ -145,7 +145,7 @@ impl Span {
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,
@@ -157,7 +157,7 @@ pub struct MultiByteChar {
 /// cloning FileMapData deeply which is never needed and a very costly operation.
 /// Wrapping FileMapData opens windows for creating Iterators
 /// over the inner FileMapData's src String.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FileMap {
 	fm: Rc<FileMapData>
 }
@@ -234,6 +234,7 @@ impl Iterator for FileMapIterator {
 /// Besides that it specifies a disjoint range of bytes 
 /// to allow indexing into its contents
 /// with the help of the SourceRange.
+#[derive(Debug)]
 pub struct FileMapData {
 	/// The name of this Source, by default this is the file name
 	pub name: String,
@@ -369,16 +370,14 @@ pub struct CodeMap {
 	file_loader: Box<FileLoader>
 }
 
-impl Default for CodeMap {
-	fn default() -> Self {
+impl CodeMap {
+	pub fn new() -> Self {
 		CodeMap {
 			files: RefCell::new(Vec::new()),
 			file_loader: Box::new(ConcreteFileLoader)
 		}
 	}
-}
 
-impl CodeMap {
 	pub fn new_with_file_loader(file_loader: Box<FileLoader>) -> CodeMap {
 		CodeMap {
 			files: RefCell::new(Vec::new()),
@@ -474,7 +473,7 @@ mod tests {
 
 	#[test]
 	fn t1() {
-		let cm = CodeMap::default();
+		let cm = CodeMap::new();
 		let fm1 = cm.new_filemap("fm1", "foo\nbar baz\n\nend");
 		let fm2 = cm.new_filemap("fm2", "\t\n\na\n\nb");
 		let mut fmit1 = fm1.iter();

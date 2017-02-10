@@ -6,3 +6,7 @@ authors = ["Robbepop"]
 [lib]
 name = "cionc_parser"
 path = "lib.rs"
+
+[dependencies]
+string-interner = "0.2"
+num-traits = "0"

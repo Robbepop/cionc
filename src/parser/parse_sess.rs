@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::ops::Deref;
 
-use string_interner::StringCache;
+use name::Name;
+use string_interner::StringInterner;
 use code_map::CodeMap;
 
 // This type is the root to manage several subcomponents.
@@ -11,15 +12,31 @@ use code_map::CodeMap;
 // can use.
 // It has methods to get references to its members so types like Lexer and Parser just
 // have to have one member of this type in order to access all of its utility members.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct ParseSess {
 	data: Rc<ParseSessData>
 }
 
-#[derive(Default)]
 pub struct ParseSessData {
-	pub symbol_table: RefCell<StringCache>,
+	pub symbol_table: RefCell<StringInterner<Name>>,
 	pub code_map    : RefCell<CodeMap>
+}
+
+impl ParseSessData {
+	pub fn new() -> Self {
+		Self{
+			symbol_table: RefCell::new(StringInterner::new()),
+			code_map    : RefCell::new(CodeMap::new())
+		}
+	}
+}
+
+impl ParseSess {
+	pub fn new() -> Self {
+		Self{
+			data: Rc::new(ParseSessData::new())
+		}
+	}
 }
 
 impl Deref for ParseSess {
