@@ -24,7 +24,7 @@ pub struct ParseSessData {
 
 impl ParseSessData {
 	pub fn new() -> Self {
-		Self{
+		ParseSessData{
 			symbol_table: RefCell::new(StringInterner::new()),
 			code_map    : RefCell::new(CodeMap::new())
 		}
@@ -33,7 +33,7 @@ impl ParseSessData {
 
 impl ParseSess {
 	pub fn new() -> Self {
-		Self{
+		ParseSess{
 			data: Rc::new(ParseSessData::new())
 		}
 	}
