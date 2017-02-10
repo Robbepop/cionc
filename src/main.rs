@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate cionc_parser;
+extern crate string_interner;
 
 use clap::{Arg, App};
 

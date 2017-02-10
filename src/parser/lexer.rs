@@ -1276,6 +1276,7 @@ mod tests {
 	}
 
 	#[test]
+	#[allow(non_snake_case)]
 	fn binary_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;
@@ -1306,6 +1307,7 @@ mod tests {
 	}
 
 	#[test]
+	#[allow(non_snake_case)]
 	fn octal_integer_literals() {
 		use token::Token::{Literal, Whitespace};
 		use token::LiteralToken::Integer;

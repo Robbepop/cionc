@@ -1,5 +1,4 @@
 extern crate string_interner;
-extern crate num_traits;
 
 pub mod name;
 pub mod token;
