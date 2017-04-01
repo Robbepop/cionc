@@ -20,14 +20,14 @@ addons:
       - gcc
       - binutils-dev # optional: only required for the --verify flag of coveralls
 
-before_script:
-  - pip install 'travis-cargo<0.2' --user
-  - export PATH=$HOME/.local/bin:$PATH
+# before_script:
+#   - pip install 'travis-cargo<0.2' --user
+#   - export PATH=$HOME/.local/bin:$PATH
 
-script:
-  - travis-cargo build
-  - travis-cargo test
-  # - travis-cargo --only stable doc
+# script:
+#   - travis-cargo build
+#   - travis-cargo test
+#   # - travis-cargo --only stable doc
 
 after_success:
   - wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
@@ -41,10 +41,10 @@ after_success:
   - cd ../..
   - rm -rf kcov-master
   # - travis-cargo --only stable coveralls --no-sudo --verify
-  - kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/cionc-*
+  - kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/cionc-* target/debug/test_cionc_parser-*
   - bash <(curl -s https://codecov.io/bash)
   - echo "Uploaded code coverage"
 
-env:
-  global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+# env:
+#   global:
+#     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
