@@ -1,5 +1,5 @@
 [package]
-name = "cionc_parser"
+name = "cionc-parser"
 version = "0.0.1"
 authors = ["Robbepop"]
 
