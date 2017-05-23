@@ -230,17 +230,17 @@ impl Lexer {
 		scan_radix: u32,
 		separator_config: SeparatorConfig
 	)
-		-> (usize, usize)
+		-> (u64, u64)
 	{
 		assert!(real_radix <= scan_radix);
 		let mut count_digits = 0;
-		let mut accumulated  = 0usize;
+		let mut accumulated  = 0u64;
 		loop {
 			match self.peek() {
 				c if c.is_digit(scan_radix) => {
 					if let Some(digit) = c.to_digit(real_radix) {
-						accumulated *= real_radix as usize;
-						accumulated += digit as usize;
+						accumulated *= real_radix as u64;
+						accumulated += digit as u64;
 					}
 					else {
 						// Error: invalid digit for a base {real_radix} literal
@@ -268,7 +268,7 @@ impl Lexer {
 	/// `real_radix` represents the true radix of the number we're
 	/// interested in, and errors will be emitted for any digits
 	/// between `real_radix` and `scan_radix`.
-	fn scan_digits(&mut self, real_radix: u32, scan_radix: u32) -> usize {
+	fn scan_digits(&mut self, real_radix: u32, scan_radix: u32) -> u64 {
 		let (count_digits, _ ) = self.scan_digits_accumulated(
 			real_radix, scan_radix, Separable);
 		count_digits
