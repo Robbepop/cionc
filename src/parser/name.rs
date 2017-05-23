@@ -1,9 +1,6 @@
-use string_interner::{NonNegative};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Name(u32);
-
-impl NonNegative for Name {}
 
 impl From<usize> for Name {
 	fn from(val: usize) -> Self { Name(val as u32) }

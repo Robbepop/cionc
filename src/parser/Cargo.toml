@@ -8,4 +8,4 @@ name = "cionc_parser"
 path = "lib.rs"
 
 [dependencies]
-string-interner = "0.3"
+string-interner = "0.4"
