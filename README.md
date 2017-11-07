@@ -34,11 +34,11 @@ at your option.
 [20]: https://ci.appveyor.com/api/projects/status/ebvd9x57t7cc050v/branch/master?svg=true
 [21]: https://ci.appveyor.com/project/Robbepop/cionc/branch/master
 
-[30]: https://coveralls.io/repos/github/Robbepop/cionc/badge.svg?branch=master
-[31]: https://coveralls.io/github/Robbepop/cionc?branch=master
+[30]: https://codecov.io/gh/Robbepop/cionc/branch/master/graph/badge.svg
+[31]: https://codecov.io/gh/Robbepop/cionc/branch/master
 
-[40]: https://codecov.io/gh/robbepop/cionc/branch/master/graph/badge.svg
-[41]: https://codecov.io/gh/Robbepop/cionc/branch/master
+[40]: https://coveralls.io/repos/github/Robbepop/cionc/badge.svg?branch=master
+[41]: https://coveralls.io/github/Robbepop/cionc?branch=master
 
 [80]: https://img.shields.io/badge/license-MIT-blue.svg
 [81]: https://img.shields.io/badge/license-APACHE-orange.svg
