@@ -17,6 +17,50 @@ Cion is my toy programming language and this is the compiler for it.
  - [ ] LLVM-IR Codegen
  - [ ] CLI & Driver
 
+## Primitive Types
+
+|    Cion          |    Rust          | Description |
+|:----------------:|:----------------:|:------------|
+| ()               | ()               | The empty (or void) type. |
+| num              | -                | A real number type that is space optimized for bit-widths less than or equal to 64 bits but that can handle any bit-width. |
+| bool             | bool             | The truth type. |
+| (A,B,...)        | (A,B,...)        | The generic tuple type. |
+| [T;N]            | [T;N]            | The fixed-size array type. |
+| [T]              | [T]              | The unsized-array type. |
+| fn(A,B,...) -> C | fn(A,B,...) -> C | Functions and closures. |
+| &T               | &T               | Shared-Reference to T. |
+| &mut T           | &mut T           | Mutable-Reference to T. |
+| str              | str              | Unsized UTF-8 character sequence. |
+
+## Example Code
+
+Simple "Hello, World!" programm.
+
+```
+main := fn()
+    println("Hello, World!")
+```
+
+Recursive maths faculty function.
+
+```
+faculty := fn(n: num) -> num
+    match n
+        | 0 => 1
+        | _ => n * faculty_recursive(n - 1)
+```
+
+Struct and custom type definition.
+
+```
+struct Age(num)
+
+struct Person
+	name    : String
+	age     : Age
+	children: Vec<Person>
+```
+
 ## License
 
 Licensed under either of
