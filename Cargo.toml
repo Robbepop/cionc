@@ -10,8 +10,8 @@ name = "cionc"
 path = "src/parser"
 
 [dependencies]
-clap = "2.2"
-string-interner = "0.4.0"
+clap = "2.27"
+string-interner = "0.6"
 
 [[test]]
 name = "cionc-parser"
