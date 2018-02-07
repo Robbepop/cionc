@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate string_interner;
 
 pub mod name;
