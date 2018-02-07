@@ -134,7 +134,7 @@ impl Lexer {
 
 	fn peek_2(&mut self) -> (char, char) {
 		use std::cmp;
-		let pulls_required = cmp::max(0, (2 - (self.peeked.len() as isize)));
+		let pulls_required = cmp::max(0, 2 - (self.peeked.len() as isize));
 		for _ in 0..pulls_required {
 			self.pull();
 		}
@@ -143,7 +143,7 @@ impl Lexer {
 
 	fn peek_3(&mut self) -> (char, char, char) {
 		use std::cmp;
-		let pulls_required = cmp::max(0, (3 - (self.peeked.len() as isize)));
+		let pulls_required = cmp::max(0, 3 - (self.peeked.len() as isize));
 		for _ in 0..pulls_required {
 			self.pull();
 		}
@@ -410,7 +410,6 @@ impl Lexer {
 
 	fn scan_char_unicode(&mut self, char_encoding: CharEncoding) -> bool {
 		use std::char;
-		use std::ascii::AsciiExt;
 		self.expect_char(Keep, 'u');
 		self.expect_char(Keep, '{');
 		let (count_digits, accumulated) =
@@ -487,7 +486,6 @@ impl Lexer {
 	)
 		-> bool
 	{
-		use std::ascii::AsciiExt;
 		let mut valid = true;
 		match self.peek() {
 			'\\' => {
@@ -571,7 +569,6 @@ impl Lexer {
 	)
 		-> (bool, usize)
 	{
-		use std::ascii::AsciiExt;
 		self.expect_char(Dump, 'r');
 		let count_pounds = self.consume_counted(Dump, |c| c == '#');
 		self.expect_char(Dump, '"');
