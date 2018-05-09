@@ -1,18 +1,6 @@
-[package]
-name = "cionc"
-version = "0.1.0"
-authors = ["Robbepop <robbepop@web.de>"]
+[workspace]
 
-[[bin]]
-name = "cionc"
-
-[dependencies.cionc-parser]
-path = "src/parser"
-
-[dependencies]
-clap = "2.27"
-string-interner = "0.6"
-
-[[test]]
-name = "cionc-parser"
-path = "src/parser/lib.rs"
+members = [
+    "driver",
+    "parser"
+]

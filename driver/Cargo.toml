@@ -1,0 +1,9 @@
+[package]
+name = "cionc-driver"
+version = "0.1.0"
+authors = ["Robbepop <robbepop@web.de>"]
+
+[dependencies]
+clap = "2.27"
+cionc-parser = { path = "../parser" }
+string-interner = "0.6"
