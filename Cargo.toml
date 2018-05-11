@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "driver",
-    "parser"
+    "src/driver",
+    "src/parser"
 ]
